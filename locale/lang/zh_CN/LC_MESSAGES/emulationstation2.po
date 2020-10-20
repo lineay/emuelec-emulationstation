@@ -2079,7 +2079,7 @@ msgid "ENABLE RA BEZELS"
 msgstr "启用 RA 边框"
 
 msgid "ENABLE RA SPLASH"
-msgstr "启用 RA Splash"
+msgstr "启用 RA 闪屏"
 
 msgid "ALWAYS SHOW BOOT VIDEO"
 msgstr "总是显示开机视频"
