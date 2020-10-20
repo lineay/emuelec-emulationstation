@@ -14,7 +14,7 @@ msgid "UPDATE AVAILABLE"
 msgstr "发现可用更新"
 
 msgid "Name"
-msgstr "游戏名"
+msgstr "游戏名称"
 
 msgid "enter game name"
 msgstr "输入游戏名称"
@@ -197,7 +197,7 @@ msgid "Game time"
 msgstr "游戏时间"
 
 msgid "how long the game has been played in total (seconds)"
-msgstr "游戏总共玩了多长时间（秒）"
+msgstr "总计游戏时间（秒）"
 
 msgid "Languages"
 msgstr "语言"
@@ -209,7 +209,7 @@ msgid "all games"
 msgstr "全部游戏"
 
 msgid "last played"
-msgstr "最后游玩"
+msgstr "最近游戏"
 
 msgid "favorites"
 msgstr "收藏夹"
@@ -259,6 +259,7 @@ msgstr "多开发商"
 msgid "This collection contains %i game, including :%s"
 msgid_plural "This collection contains %i games, including :%s"
 msgstr[0] "当前合辑总计有%i个游戏，包括：%s"
+msgstr[1] ""
 
 msgid "SCANNING BLUETOOTH"
 msgstr "正在扫描蓝牙设备"
@@ -405,7 +406,7 @@ msgid "SELECT COLLECTIONS"
 msgstr "选择合辑"
 
 msgid "AUTOMATIC COLLECTIONS"
-msgstr ""
+msgstr "自动收藏"
 
 msgid "ARCADE SYSTEMS"
 msgstr "游戏系统"
@@ -456,7 +457,7 @@ msgid "VIEW GAME MANUAL"
 msgstr "阅读游戏手册"
 
 msgid "VIEW GAME MAP"
-msgstr "阅读游戏地图"
+msgstr "查看游戏地图"
 
 msgid "COLLECTION"
 msgstr "合辑"
@@ -537,13 +538,13 @@ msgid "LAUNCH"
 msgstr "启动"
 
 msgid "UNKNOWN ROM VERSION"
-msgstr ""
+msgstr "未知 ROM 版本"
 
 msgid "DIFFERENT ROM"
-msgstr ""
+msgstr "不同 ROM"
 
 msgid "SAME ROM"
-msgstr ""
+msgstr "相同 ROM"
 
 msgid "UNAVAILABLE CORE"
 msgstr "核心无效"
@@ -558,10 +559,10 @@ msgid "NO GAME FOUND"
 msgstr "未发现游戏"
 
 msgid "JOIN GAME"
-msgstr ""
+msgstr "加入游戏"
 
 msgid "WATCH GAME"
-msgstr ""
+msgstr "观看游戏"
 
 msgid "MANUAL INPUT"
 msgstr "手动输入"
@@ -642,7 +643,7 @@ msgid "black"
 msgstr ""
 
 msgid "random video"
-msgstr ""
+msgstr "随机视频"
 
 msgid "slideshow"
 msgstr ""
@@ -651,19 +652,19 @@ msgid "always"
 msgstr "总是"
 
 msgid "start & end"
-msgstr ""
+msgstr "开始/结束"
 
 msgid "never"
 msgstr "从未"
 
 msgid "none"
-msgstr ""
+msgstr "无"
 
 msgid "systems"
-msgstr ""
+msgstr "系统"
 
 msgid "random"
-msgstr ""
+msgstr "随机"
 
 msgid "SCREENSAVER SETTINGS"
 msgstr "屏保设置"
@@ -810,11 +811,13 @@ msgstr ""
 msgid "%i GAME SUCCESSFULLY SCRAPED!"
 msgid_plural "%i GAMES SUCCESSFULLY SCRAPED!"
 msgstr[0] "成功抓取 %i 个游戏元数据!"
+msgstr[1] "成功抓取 %i 个游戏元数据!"
 
 #, c-format
 msgid "%i GAME SKIPPED."
 msgid_plural "%i GAMES SKIPPED."
 msgstr[0] "跳过了 %i 个游戏。"
+msgstr[1] "跳过了 %i 个游戏。"
 
 msgid "SCRAPE NOW"
 msgstr "开始抓取"
@@ -829,7 +832,7 @@ msgid "Only missing medias"
 msgstr "仅抓取缺少的部分"
 
 msgid "FILTER"
-msgstr "筛选"
+msgstr "过滤器"
 
 msgid "SCRAPE THESE SYSTEMS"
 msgstr "选择要抓取的游戏平台"
@@ -907,7 +910,7 @@ msgid "CONTROLLERS SETTINGS"
 msgstr "控制器设置"
 
 msgid "UI SETTINGS"
-msgstr "UI 设置"
+msgstr "界面设置"
 
 msgid "SOUND SETTINGS"
 msgstr "声音设置"
@@ -925,7 +928,7 @@ msgid "SCRAPE"
 msgstr "抓取元数据"
 
 msgid "UPDATES & DOWNLOADS"
-msgstr "更新文件和下载文件"
+msgstr "更新/下载"
 
 msgid "SYSTEM SETTINGS"
 msgstr "系统设置"
@@ -1075,7 +1078,7 @@ msgid "REDETECT GAMES LANG/REGION"
 msgstr "重新查询游戏的 语言/区域"
 
 msgid "UI"
-msgstr ""
+msgstr "界面"
 
 msgid "CAROUSEL TRANSITIONS"
 msgstr "循环画面转场"
@@ -1099,10 +1102,10 @@ msgid "AUTOCONFIGURE EMULATORS CONTROLLERS"
 msgstr "自动配置模拟的控制设备"
 
 msgid "OPTIMIZATIONS"
-msgstr ""
+msgstr "优化"
 
 msgid "PRELOAD UI"
-msgstr "预加载UI"
+msgstr "预加载界面"
 
 msgid "THREADED LOADING"
 msgstr "线程载入中"
@@ -1147,7 +1150,7 @@ msgid "POWER SAVER MODES"
 msgstr "省电模式"
 
 msgid "UI MODE"
-msgstr "UI模式"
+msgstr "图形界面模式"
 
 msgid ""
 "You are changing the UI to a restricted mode:\n"
@@ -1661,22 +1664,25 @@ msgstr "访问制造商"
 msgid "%i COLLECTION"
 msgid_plural "%i COLLECTIONS"
 msgstr[0] "%i 合辑"
+msgstr[1] "%i 合辑"
 
 #, c-format
 msgid "%i ITEM"
 msgid_plural "%i ITEMS"
 msgstr[0] "%i 主题"
+msgstr[1] "%i 主题"
 
 #, c-format
 msgid "%i GAME"
 msgid_plural "%i GAMES"
 msgstr[0] "%i 游戏"
+msgstr[1] "%i 游戏"
 
 msgid "KODI"
 msgstr "KODI"
 
 msgid "NETPLAY"
-msgstr "联网游戏"
+msgstr "联机游戏"
 
 msgid "RANDOM"
 msgstr "随机"
@@ -1685,7 +1691,7 @@ msgid "FILES"
 msgstr "文件"
 
 msgid "Preloading UI"
-msgstr "预加载 UI"
+msgstr "预加载界面"
 
 msgid "MENU"
 msgstr "菜单"
@@ -1712,19 +1718,19 @@ msgid "Favorites"
 msgstr "收藏夹"
 
 msgid "START GAME"
-msgstr ""
+msgstr "开始游戏"
 
 msgid "START NETPLAY HOST"
-msgstr ""
+msgstr "开始联机主机"
 
 msgid "ALLOW SPECTATOR MODE"
-msgstr ""
+msgstr "启用观看模式"
 
 msgid "SET PLAYER PASSWORD"
-msgstr ""
+msgstr "设置玩家密码"
 
 msgid "SET VIEWER PASSWORD"
-msgstr ""
+msgstr "设置观看密码"
 
 msgid "Searching"
 msgstr "搜索中"
@@ -1898,16 +1904,28 @@ msgid "RIGHT"
 msgstr "右"
 
 msgid "LEFT ANALOG UP"
-msgstr "左侧类比摇杆 上"
+msgstr "左摇杆 上"
+
+msgid "LEFT ANALOG RIGHT"
+msgstr "左摇杆 右"
+
+msgid "LEFT ANALOG DOWN"
+msgstr "左摇杆 下"
 
 msgid "LEFT ANALOG LEFT"
-msgstr "左侧类比摇杆 左"
+msgstr "左摇杆 左"
 
 msgid "RIGHT ANALOG UP"
-msgstr "右侧类比摇杆 上"
+msgstr "右摇杆 上"
+
+msgid "RIGHT ANALOG DOWN"
+msgstr "右摇杆 下"
+
+msgid "RIGHT ANALOG RIGHT"
+msgstr "右摇杆 右"
 
 msgid "RIGHT ANALOG LEFT"
-msgstr "右侧类比摇杆 左"
+msgstr "右摇杆 左"
 
 msgid "HOTKEY"
 msgstr "热键"
@@ -1945,6 +1963,7 @@ msgstr ""
 msgid "HOLD FOR %iS TO SKIP"
 msgid_plural "HOLD FOR %iS TO SKIP"
 msgstr[0] "按住 %iS键 跳过"
+msgstr[1] "按住 %iS键 跳过"
 
 msgid "PRESS ANYTHING"
 msgstr "按任意键"
@@ -1959,6 +1978,7 @@ msgstr "欢迎"
 msgid "%i GAMEPAD DETECTED"
 msgid_plural "%i GAMEPADS DETECTED"
 msgstr[0] "检测到 %i 个游戏手柄"
+msgstr[1] "检测到 %i 个游戏手柄"
 
 msgid "NO GAMEPADS DETECTED"
 msgstr "未检测到游戏手柄"
@@ -1985,6 +2005,7 @@ msgstr "全部不选"
 msgid "%i SELECTED"
 msgid_plural "%i SELECTED"
 msgstr[0] "已选中 %i 个"
+msgstr[1] "已选中 %i 个"
 
 msgid "CHANGE"
 msgstr "更改"
@@ -2002,6 +2023,7 @@ msgstr "上/下"
 msgid "%d day ago"
 msgid_plural "%d days ago"
 msgstr[0] "%d 天前"
+msgstr[1] "%d 天前"
 
 #, c-format
 msgid "%d hour ago"
@@ -2012,11 +2034,13 @@ msgstr[0] "%d 小时前"
 msgid "%d minute ago"
 msgid_plural "%d minutes ago"
 msgstr[0] "%d 分钟前"
+msgstr[1] "%d 分钟前"
 
 #, c-format
 msgid "%d second ago"
 msgid_plural "%d seconds ago"
 msgstr[0] "%d 秒前"
+msgstr[1] "%d 秒前"
 
 msgid "WORKING..."
 msgstr "进行中..."
@@ -2033,6 +2057,90 @@ msgstr ""
 msgid "%d s"
 msgstr ""
 
+msgid "DANGER ZONE!"
+msgstr "无反应区"
+
+msgid "You are about to set EmuELEC resolution to"
+msgstr "您即将 EmuELEC 的分辨率设置为"
+
+msgid "Emulationstation will restart"
+msgstr "Emulationstation 将重新启动"
+
+msgid "AUDIO DEVICE"
+msgstr "音频驱动"
+
+msgid "ENABLE SSH"
+msgstr "启用 SSH"
+
+msgid "START AT BOOT"
+msgstr "开机启动"
+
+msgid "ENABLE RA BEZELS"
+msgstr "启用 RA 边框"
+
+msgid "ENABLE RA SPLASH"
+msgstr "启用 RA Splash"
+
+msgid "ALWAYS SHOW BOOT VIDEO"
+msgstr "总是显示开机视频"
+
+msgid ""
+"WARNING THIS WILL RESTART EMULATIONSTATION!\n\n"
+"AFTER THE SCRIPT IS DONE REMEMBER TO COPY THE FILE /storage/downloads/ee_backup_config.zip TO SOME PLACE SAFE OR IT WILL BE DELETED ON NEXT REBOOT!\n\n"
+"BACKUP CURRENT CONFIG AND RESTART?"
+msgstr ""
+"警告！这将重新启动 EMULATIONSTATION!"
+"备份的配置文件将被打包到 /storage/downloads/ee_backup_config.zip，为确保安全您需要复制到外部驱动器上，否则它将在下次重启时被删除！\n\n"
+"备份当前配置并重启？"
+
+msgid "BACKUP EMUELEC CONFIGS"
+msgstr "备份 EMUELEC 各项设置"
+
+msgid ""
+"WARNING: SYSTEM WILL RESET SCRIPTS AND BINARIES !\n"
+"UPDATE, DOWNLOADS, THEMES, BLUETOOTH PAIRINGS AND ROMS FOLDER WILL NOT BE AFFECTED.\n\n"
+"RESET SCRIPTS AND BINARIES TO DEFAULT AND RESTART?"
+msgstr ""
+"警告: 系统将重启脚本和二进制文件！\n"
+"更新，下载，主题，蓝牙配对和ROMS文件夹均不受影响。\n\n"
+"重置脚本和二进制文件并重启？"
+
+msgid "RESET EMUELEC SCRIPTS AND BINARIES TO DEFAULT"
+msgstr "重置 EMUELEC 脚本和文件为默认"
+
+msgid ""
+"WARNING: ALL CONFIGURATIONS WILL BE RESET AND NO BACKUP WILL BE CREATED!\n\n"
+"IF YOU WANT TO KEEP YOUR SETTINGS MAKE A BACKUP AND SAVE IT ON AN EXTERNAL DRIVE BEFORE RUNING THIS OPTION!\n\n"
+"RESET SYSTEM TO DEFAULT CONFIG AND RESTART?"
+msgstr ""
+"警告: 所有配置选项都将恢复到初始设置！\n\n"
+"如果要保留设置，请先备份后将其保存到外部驱动器上，然后再运行此选项！\n\n"
+"重置系统到初始状态并重启？"
+
+msgid "RESET SYSTEM TO DEFAULT CONFIG"
+msgstr "重置系统到默认设置"
+
+msgid "You are about to set EmuELEC Language to:"
+msgstr "您将要EmuELEC语言设置为"
+
+msgid "RESTART EMULATIONSTATION"
+msgstr "重新启动 EMULATIONSTATION"
+
+msgid "REALLY RESTART EMULATIONSTATION?"
+msgstr "确定重新启动 EMULATIONSTATION?"
+
+msgid "REALLY START RETROARCH?"
+msgstr "确定启动 RETROARCH?"
+
+msgid "START RETROARCH"
+msgstr "启动 RETROARCH"
+
+msgid "REALLY REBOOT FROM NAND?"
+msgstr "确定重启到安卓系统？"
+
+msgid "REBOOT FROM NAND"
+msgstr "重启到安卓系统"
+
 #~ msgid ""
 #~ "THE \"RANDOM VIDEO\" SCREENSAVER SHOWS VIDEOS FROM YOUR GAMELIST.\n"
 #~ "IF YOU DON'T HAVE VIDEOS, OR IF NONE OF THEM CAN BE PLAYED AFTER A FEW "
@@ -2042,7 +2150,7 @@ msgstr ""
 #~ msgstr ""
 #~ "屏保 \"随机视频\" 将显示游戏列表中的视频。\n"
 #~ "如果游戏列表中没有视频，或在尝试播放失败几次后，显示为\"黑屏\"。\n"
-#~ "更多选项可以到 \"UI 设置 -> 屏保-随机视频设置\" 进行设置。"
+#~ "更多选项可以到 \"界面设置 -> 屏保-随机视频设置\" 进行设置。"
 
 #~ msgid "VIDEO SCREENSAVER"
 #~ msgstr "视频屏保"
