@@ -11,6 +11,7 @@
 #include "Sound.h"
 #include <algorithm>
 #include "LocaleES.h"
+#include "components/ScrollbarComponent.h"
 
 #define EXTRAITEMS 2
 #define ALLOWANIMATIONS (Settings::getInstance()->getString("TransitionStyle") != "instant")
@@ -70,6 +71,8 @@ public:
 	ImageGridComponent(Window* window);
 
 	void add(const std::string& name, const std::string& imagePath, const std::string& videoPath, const std::string& marqueePath, bool favorite, bool folder, bool virtualFolder, const T& obj);
+	
+	void setImage(const std::string& imagePath, const T& obj);
 
 	bool input(InputConfig* config, Input input) override;
 	void update(int deltaTime) override;
@@ -86,6 +89,8 @@ public:
 	virtual void onHide();
 	virtual void onScreenSaverActivate();
 	virtual void onScreenSaverDeactivate();
+
+	virtual void setOpacity(unsigned char opacity);
 
 	ImageSource		getImageSource() { return mImageSource; };
 
@@ -146,12 +151,14 @@ private:
 
 	ScrollDirection mScrollDirection;
 	ImageSource		mImageSource;
+	
+	ScrollbarComponent mScrollbar;
 
 	std::function<void(CursorState state)> mCursorChangedCallback;
 };
 
 template<typename T>
-ImageGridComponent<T>::ImageGridComponent(Window* window) : IList<ImageGridData, T>(window)
+ImageGridComponent<T>::ImageGridComponent(Window* window) : IList<ImageGridData, T>(window), mScrollbar(window)
 {
 	Vector2f screen = Vector2f((float)Renderer::getScreenWidth(), (float)Renderer::getScreenHeight());
 
@@ -204,6 +211,19 @@ void ImageGridComponent<T>::add(const std::string& name, const std::string& imag
 }
 
 template<typename T>
+void ImageGridComponent<T>::setImage(const std::string& imagePath, const T& obj)
+{
+	IList<ImageGridData, T>* list = static_cast<IList< ImageGridData, T >*>(this);
+	auto entry = list->findEntry(obj);
+	if (entry != list->end())
+	{
+		(*entry)->data.texturePath = imagePath;
+		mEntriesDirty = true;
+	}
+}
+
+
+template<typename T>
 bool ImageGridComponent<T>::input(InputConfig* config, Input input)
 {
 	if(input.value != 0)
@@ -219,14 +239,22 @@ bool ImageGridComponent<T>::input(InputConfig* config, Input input)
 			dir[0 ^ idx] = -1;
 		else if(config->isMappedLike("right", input))
 			dir[0 ^ idx] = 1;
+#ifdef _ENABLEEMUELEC
+		else  if (config->isMappedTo("lefttrigger", input))
+#else
 		else  if (config->isMappedTo("pageup", input))
+#endif
 		{
 			if (isVertical())
 				dir[1 ^ idx] = -10;
 			else
 				dir[0 ^ idx] = -10;
 		}
+#ifdef _ENABLEEMUELEC
+		else if (config->isMappedTo("righttrigger", input))
+#else
 		else if (config->isMappedTo("pagedown", input))
+#endif
 		{
 			if (isVertical())
 				dir[1 ^ idx] = 10;
@@ -244,9 +272,16 @@ bool ImageGridComponent<T>::input(InputConfig* config, Input input)
 			return true;
 		}
 	}else{
+#ifdef _ENABLEEMUELEC
+		if(config->isMappedLike("up", input) || config->isMappedLike("down", input) || 
+			config->isMappedLike("left", input) || config->isMappedLike("right", input) ||
+			config->isMappedTo("righttrigger", input) || config->isMappedTo("lefttrigger", input))
+#else
 		if(config->isMappedLike("up", input) || config->isMappedLike("down", input) || 
 			config->isMappedLike("left", input) || config->isMappedLike("right", input) ||
 			config->isMappedTo("pagedown", input) || config->isMappedTo("pageup", input))
+
+#endif
 		{
 			stopScrolling();
 		}
@@ -259,6 +294,9 @@ template<typename T>
 void ImageGridComponent<T>::update(int deltaTime)
 {
 	GuiComponent::update(deltaTime);
+
+	mScrollbar.update(deltaTime);
+
 	listUpdate(deltaTime);
 	
 	for(auto it = mTiles.begin(); it != mTiles.end(); it++)
@@ -278,6 +316,15 @@ void ImageGridComponent<T>::topWindow(bool isTop)
 }
 
 template<typename T>
+void ImageGridComponent<T>::setOpacity(unsigned char opacity)
+{
+	GuiComponent::setOpacity(opacity);
+
+	for (auto tile : mTiles)
+		tile->setOpacity(opacity);
+}
+
+template<typename T>
 void ImageGridComponent<T>::onShow()
 {
 	if (mEntriesDirty)
@@ -288,11 +335,17 @@ void ImageGridComponent<T>::onShow()
 
 	GuiComponent::onShow();
 
-	for (int ti = 0; ti < (int)mTiles.size(); ti++)
-	{
-		std::shared_ptr<GridTileComponent> tile = mTiles.at(ti);
+	for (auto tile : mTiles)
 		tile->onShow();
-	}
+}
+
+template<typename T>
+void ImageGridComponent<T>::onHide()
+{
+	GuiComponent::onHide();
+	
+	for (auto tile : mTiles)
+		tile->onHide();	
 }
 
 template<typename T>
@@ -340,18 +393,6 @@ std::shared_ptr<GridTileComponent> ImageGridComponent<T>::getSelectedTile()
 }
 
 template<typename T>
-void ImageGridComponent<T>::onHide()
-{
-	GuiComponent::onHide();
-
-	for (int ti = 0; ti < (int)mTiles.size(); ti++)
-	{
-		std::shared_ptr<GridTileComponent> tile = mTiles.at(ti);
-		tile->onHide();
-	}
-}
-
-template<typename T>
 void ImageGridComponent<T>::render(const Transform4x4f& parentTrans)
 {
 	Transform4x4f trans = getTransform() * parentTrans;
@@ -391,7 +432,7 @@ void ImageGridComponent<T>::render(const Transform4x4f& parentTrans)
 		{
 			std::shared_ptr<GridTileComponent> tile = (*it);
 
-			auto tt = tile->getTransform() * trans;
+			auto tt = trans * tile->getTransform();
 			Renderer::setMatrix(tt);
 			Renderer::drawRect(0.0, 0.0, tile->getSize().x(), tile->getSize().y(), 0x00FF0033);
 		}
@@ -421,7 +462,7 @@ void ImageGridComponent<T>::render(const Transform4x4f& parentTrans)
 			break;
 		}
 	}
-
+	
 	for (auto it = mTiles.begin(); it != mTiles.end(); it++)
 	{
 		std::shared_ptr<GridTileComponent> tile = (*it);
@@ -442,6 +483,36 @@ void ImageGridComponent<T>::render(const Transform4x4f& parentTrans)
 
 	listRenderTitleOverlay(trans);
 	GuiComponent::renderChildren(trans);
+	
+	if (mScrollbar.isEnabled() && !mScrollLoop)
+	{
+		float dimScrollable = isVertical() ? mGridDimension.y() - 2 * EXTRAITEMS : mGridDimension.x() - 2 * EXTRAITEMS;
+		float dimOpposite = isVertical() ? mGridDimension.x() : mGridDimension.y();
+		if (dimOpposite == 0)
+			dimOpposite = 1;
+
+		int col = (mStartPosition / dimOpposite);
+		int totalCols = ((Math::max(0, mEntries.size() - 1)) / dimOpposite);
+
+		Vector3f pos = GuiComponent::getPosition();
+		Vector2f sz = GuiComponent::getSize();
+
+		if (isVertical())
+		{
+			pos.y() += mPadding.y();
+			sz.y() -= mPadding.y() + mPadding.w();
+		}
+		else
+		{
+			pos.x() += mPadding.x();
+			sz.x() -= mPadding.x() + mPadding.z();
+		}
+
+		mScrollbar.setContainerBounds(pos, sz, isVertical());
+		mScrollbar.setRange(0, totalCols, dimScrollable);
+		mScrollbar.setScrollPosition(col);
+		mScrollbar.render(parentTrans);		
+	}
 }
 
 template<typename T>
@@ -454,6 +525,8 @@ void ImageGridComponent<T>::applyTheme(const std::shared_ptr<ThemeData>& theme, 
 	GuiComponent::applyTheme(theme, view, element, properties ^ ThemeFlags::SIZE);
 
 	Vector2f screen = Vector2f((float)Renderer::getScreenWidth(), (float)Renderer::getScreenHeight());
+
+	mScrollbar.fromTheme(theme, view, element, "imagegrid");
 
 	const ThemeData::ThemeElement* elem = theme->getElement(view, element, "imagegrid");
 	if (elem)
@@ -622,7 +695,9 @@ void ImageGridComponent<T>::onCursorChanged(const CursorState& state)
 
 		return;
 	}	
-		
+
+	mScrollbar.onCursorChanged();
+
 	bool direction = mCursor >= mLastCursor;
 
 	int diff = direction ? mCursor - mLastCursor : mLastCursor - mCursor;
@@ -895,9 +970,15 @@ void ImageGridComponent<T>::updateTileAtPos(int tilePos, int imgPos, bool allowA
 		std::string name = mEntries.at(imgPos).name;
 
 		if (!mEntries.at(imgPos).data.favorite || tile->hasFavoriteMedia())
-			tile->setLabel(name);
+		{			
+			// Remove favorite text glyph
+			if (Utils::String::startsWith(name, _U("\uF006 ")))
+				tile->setLabel(name.substr(4));
+			else 
+				tile->setLabel(name);
+		}
 		else
-			tile->setLabel(_U("\uF006 ") + name);
+			tile->setLabel(name);
 
 		std::string imagePath = mEntries.at(imgPos).data.texturePath;
 

@@ -28,4 +28,7 @@ int quitES(QuitMode mode = QuitMode::QUIT);
 bool isFastShutdown();
 void processQuitMode();
 
+#ifdef _ENABLEEMUELEC
+std::string getShOutput(const std::string& mStr); /* < emuelec */
+#endif
 #endif // ES_CORE_PLATFORM_H

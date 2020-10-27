@@ -36,6 +36,9 @@ std::vector<const char*> settings_dont_save {
 	{ "ScreenOffsetY" },
 	{ "ScreenRotate" },
 	{ "MonitorID" },
+#ifdef _ENABLEEMUELEC
+	{ "LogPath" },
+#endif
 };
 
 Settings::Settings()
@@ -57,7 +60,6 @@ void Settings::setDefaults()
 	mWasChanged = false;
 	mBoolMap.clear();
 	mIntMap.clear();
-
 	mBoolMap["BackgroundJoystickInput"] = false;
 	mBoolMap["ParseGamelistOnly"] = false;
 	mBoolMap["ShowHiddenFiles"] = false;
@@ -98,7 +100,11 @@ void Settings::setDefaults()
 		mStringMap["FolderViewMode"] = "never";
 		mStringMap["HiddenSystems"] = "";
 
+#ifdef _ENABLEEMUELEC
+    mBoolMap["EnableSounds"] = true;
+#else
     mBoolMap["EnableSounds"] = false; // batocera
+#endif
 	mBoolMap["ShowHelpPrompts"] = true;
 	mBoolMap["ScrapeRatings"] = true;
 	mBoolMap["IgnoreGamelist"] = false;
@@ -113,18 +119,26 @@ void Settings::setDefaults()
 	mBoolMap["DebugText"] = false;
 	mBoolMap["DebugImage"] = false;
 
+	mBoolMap["InvertButtons"] = false;
 	mIntMap["ScreenSaverTime"] = 5*60*1000; // 5 minutes
 	mIntMap["ScraperResizeWidth"] = 640;
 	mIntMap["ScraperResizeHeight"] = 0;
 
-#if defined(_WIN32)
+#if defined(_WIN32) || defined(TINKERBOARD) || defined(X86) || defined(X86_64) || defined(ODROIDN2) || defined(ODROIDC2)
+	// Boards > 1Gb RAM
 	mIntMap["MaxVRAM"] = 256;
-#else
-	#ifdef _RPI_
-		mIntMap["MaxVRAM"] = 80;
-	#else
-		mIntMap["MaxVRAM"] = 100;
-	#endif
+#elif defined(ODROIDGOA) || defined(RPI2) || defined(RPI3) || defined(RPI4) || defined(ROCKPRO64)
+	// Boards with 1Gb RAM
+	mIntMap["MaxVRAM"] = 128;
+#elif defined(_RPI_) 
+	// Rpi 0, 1
+	mIntMap["MaxVRAM"] = 80;
+#elif defined(_ENABLEEMUELEC)
+	// EmuELEC
+	mIntMap["MaxVRAM"] = 180;
+#else 
+	// Other boards
+	mIntMap["MaxVRAM"] = 100;
 #endif
 
 	mStringMap["TransitionStyle"] = "auto";
@@ -146,22 +160,40 @@ void Settings::setDefaults()
 	mBoolMap["StretchVideoOnScreenSaver"] = false;
 	mStringMap["PowerSaverMode"] = "default"; // batocera
 
+	mBoolMap["StopMusicOnScreenSaver"] = true;
+
 	mBoolMap["RetroachievementsMenuitem"] = true;
 	mIntMap["ScreenSaverSwapImageTimeout"] = 10000;
 	mBoolMap["SlideshowScreenSaverStretch"] = false;
 	// mStringMap["SlideshowScreenSaverBackgroundAudioFile"] = "/userdata/music/slideshow_bg.wav"; // batocera
 	mBoolMap["SlideshowScreenSaverCustomImageSource"] = false;
+#ifdef _ENABLEEMUELEC
+	mStringMap["SlideshowScreenSaverImageDir"] = "/storage/screenshots"; // emuelec
+#else
 	mStringMap["SlideshowScreenSaverImageDir"] = "/userdata/screenshots"; // batocera
+#endif
 	mStringMap["SlideshowScreenSaverImageFilter"] = ".png,.jpg";
 	mBoolMap["SlideshowScreenSaverRecurse"] = false;
 	mBoolMap["SlideshowScreenSaverGameName"] = true;	
 	mStringMap["ScreenSaverDecorations"] = "systems";
 	
 
+	mBoolMap["SlideshowScreenSaverCustomVideoSource"] = false;
+#ifdef _ENABLEEMUELEC
+	mStringMap["SlideshowScreenSaverVideoDir"] = "/storage/roms/mplayer"; // emuelec
+    mStringMap["SlideshowScreenSaverVideoFilter"] = ".mp4,.avi,.mkv,.flv,.mpg,.mov";
+	mBoolMap["SlideshowScreenSaverVideoRecurse"] = true;
+#else
+	mStringMap["SlideshowScreenSaverVideoDir"] = "/userdata/screenshots"; // batocera
+	mStringMap["SlideshowScreenSaverVideoFilter"] = ".mp4,.avi";
+	mBoolMap["SlideshowScreenSaverVideoRecurse"] = false;
+#endif
+
 	// This setting only applies to raspberry pi but set it for all platforms so
 	// we don't get a warning if we encounter it on a different platform
 	mBoolMap["VideoOmxPlayer"] = false;
-	#ifdef _RPI_
+
+	#if defined(_RPI_) && !defined(RPI3) && !defined(RPI4)
 		// we're defaulting to OMX Player for full screen video on the Pi
 		mBoolMap["ScreenSaverOmxPlayer"] = true;
 	#else
@@ -174,6 +206,8 @@ void Settings::setDefaults()
 	mBoolMap["ScreenSaverVideoMute"] = false;
 	mBoolMap["VideoLowersMusic"] = true;	
 	mBoolMap["VolumePopup"] = true;
+
+	mIntMap["MusicVolume"] = 128;
 	
 	// Audio out device for Video playback using OMX player.
 	mStringMap["OMXAudioDev"] = "both";
@@ -189,7 +223,7 @@ void Settings::setDefaults()
 	mBoolMap["LocalArt"] = false;
 
 	// Audio out device for volume control
-	#ifdef _RPI_
+	#if defined _RPI_ || defined _ENABLEEMUELEC
 		mStringMap["AudioDevice"] = "PCM";
 	#else
 		mStringMap["AudioDevice"] = "Master";
@@ -224,6 +258,8 @@ void Settings::setDefaults()
 	mBoolMap["HideWindow"] = true;
 #endif
 
+	mBoolMap["HideWindowFullReinit"] = false;
+
 	mIntMap["WindowWidth"]   = 0;
 	mIntMap["WindowHeight"]  = 0;
 	mIntMap["ScreenWidth"]   = 0;
@@ -237,6 +273,9 @@ void Settings::setDefaults()
 	mStringMap["INPUT P3NAME"] = "DEFAULT";
 	mStringMap["INPUT P4NAME"] = "DEFAULT";
 	mStringMap["INPUT P5NAME"] = "DEFAULT";
+#ifdef _ENABLEEMUELEC
+	mStringMap["LogPath"] = ""; /*emuelec */
+#endif
 
 	// Audio settings
 	mBoolMap["audio.bgmusic"] = true;
@@ -318,11 +357,11 @@ bool Settings::saveFile()
 		auto def = mDefaultStringMap.find(iter->first);
 		if (def == mDefaultStringMap.cend() && iter->second.empty())
 			continue;
-
+#ifndef _ENABLEEMUELEC
 		// Value is know and has default value, don't save it
 		if (def != mDefaultStringMap.cend() && def->second == iter->second)
 			continue;
-
+#endif
 		pugi::xml_node node = config.append_child("string");
 		node.append_attribute("name").set_value(iter->first.c_str());
 		node.append_attribute("value").set_value(iter->second.c_str());

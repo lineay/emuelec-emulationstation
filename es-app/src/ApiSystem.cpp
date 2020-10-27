@@ -83,11 +83,19 @@ unsigned long ApiSystem::getFreeSpaceGB(std::string mountpoint)
 }
 
 std::string ApiSystem::getFreeSpaceUserInfo() {
+#ifdef _ENABLEEMUELEC
+  return getFreeSpaceInfo("/storage");
+#else
   return getFreeSpaceInfo("/userdata");
+#endif
 }
 
 std::string ApiSystem::getFreeSpaceSystemInfo() {
+#ifdef _ENABLEEMUELEC
+  return getFreeSpaceInfo("/");
+#else
   return getFreeSpaceInfo("/boot");
+#endif
 }
 
 std::string ApiSystem::getFreeSpaceInfo(const std::string mountpoint)
@@ -120,14 +128,22 @@ std::string ApiSystem::getFreeSpaceInfo(const std::string mountpoint)
 
 bool ApiSystem::isFreeSpaceLimit() 
 {
+#ifdef _ENABLEEMUELEC
+	return getFreeSpaceGB("/storage/") < 2;
+#else
 	return getFreeSpaceGB("/userdata/") < 2;
+#endif
 }
 
 std::string ApiSystem::getVersion() 
 {
 	LOG(LogDebug) << "ApiSystem::getVersion";
-
+#ifdef _ENABLEEMUELEC
+	std::ifstream ifs("/storage/.config/EE_VERSION");
+#else
 	std::ifstream ifs("/usr/share/batocera/batocera.version");
+#endif
+
 	if (ifs.good()) 
 	{
 		std::string contents;
@@ -145,6 +161,9 @@ bool ApiSystem::setOverscan(bool enable)
 
 bool ApiSystem::setOverclock(std::string mode) 
 {
+#ifdef _ENABLEEMUELEC
+	return true;
+#endif
 	if (mode.empty())
 		return false;
 
@@ -156,14 +175,20 @@ std::pair<std::string, int> ApiSystem::updateSystem(const std::function<void(con
 {
 	LOG(LogDebug) << "ApiSystem::updateSystem";
 
+#ifdef _ENABLEEMUELEC	
+	std::string updatecommand = "emuelec-upgrade";
+	std::string updatelog = "/storage/.config/emuelec/logs/emuelec-upgrade.log";
+#else
 	std::string updatecommand = "batocera-upgrade";
+	std::string updatelog = "/userdata/system/logs/batocera-upgrade.log";
+#endif
 
 	FILE *pipe = popen(updatecommand.c_str(), "r");
 	if (pipe == nullptr)
 		return std::pair<std::string, int>(std::string("Cannot call update command"), -1);
 
 	char line[1024] = "";
-	FILE *flog = fopen("/userdata/system/logs/batocera-upgrade.log", "w");
+	FILE *flog = fopen(updatelog.c_str(), "w");
 	while (fgets(line, 1024, pipe)) 
 	{
 		strtok(line, "\n");
@@ -251,10 +276,12 @@ std::pair<std::string, int> ApiSystem::scrape(BusyComponent* ui)
 	FILE* pipe = popen("batocera-scraper", "r");
 	if (pipe == nullptr)
 		return std::pair<std::string, int>(std::string("Cannot call scrape command"), -1);
-
 	char line[1024] = "";
-
+#ifdef _ENABLEEMUELEC
+	FILE* flog = fopen("/storage/.config/emuelec/logs/emuelec-scraper.log", "w");
+#else	
 	FILE* flog = fopen("/userdata/system/logs/batocera-scraper.log", "w");
+#endif
 	while (fgets(line, 1024, pipe)) 
 	{
 		strtok(line, "\n");
@@ -310,16 +337,22 @@ void ApiSystem::launchExternalWindow_before(Window *window)
 
 	AudioManager::getInstance()->deinit();
 	VolumeControl::getInstance()->deinit();
+#ifdef _ENABLEEMUELEC	
+	window->deinit(false);
+#else
 	window->deinit();
-
+#endif
 	LOG(LogDebug) << "ApiSystem::launchExternalWindow_before OK";
 }
 
 void ApiSystem::launchExternalWindow_after(Window *window) 
 {
 	LOG(LogDebug) << "ApiSystem::launchExternalWindow_after";
-
+#ifdef _ENABLEEMUELEC
+	window->init(false);
+#else
 	window->init();
+#endif
 	VolumeControl::getInstance()->init();
 	AudioManager::getInstance()->init();
 	window->normalizeNextUpdate();
@@ -367,7 +400,24 @@ bool ApiSystem::launchFileManager(Window *window)
 {
 	LOG(LogDebug) << "ApiSystem::launchFileManager";
 
-	std::string command = "filemanagerlauncher";
+	std::string command = "/emuelec/scripts/emuelec-utils filemanager";
+
+	ApiSystem::launchExternalWindow_before(window);
+
+	int exitCode = system(command.c_str());
+	if (WIFEXITED(exitCode))
+		exitCode = WEXITSTATUS(exitCode);
+
+	ApiSystem::launchExternalWindow_after(window);
+
+	return exitCode == 0;
+}
+
+bool ApiSystem::launchErrorWindow(Window *window) 
+{
+	LOG(LogDebug) << "ApiSystem::launchErrorWindow";
+
+	std::string command = "/emuelec/scripts/emuelec-utils error";
 
 	ApiSystem::launchExternalWindow_before(window);
 
@@ -382,12 +432,20 @@ bool ApiSystem::launchFileManager(Window *window)
 
 bool ApiSystem::enableWifi(std::string ssid, std::string key) 
 {
+#ifdef _ENABLEEMUELEC
+	return executeScript("batocera-config wifi enable \"" + ssid + "\" \"" + key + "\"");
+#else
 	return executeScript("batocera-wifi enable \"" + ssid + "\" \"" + key + "\"");
+#endif
 }
 
 bool ApiSystem::disableWifi() 
 {
+#ifdef _ENABLEEMUELEC
+	return executeScript("batocera-config wifi disable");
+#else
 	return executeScript("batocera-wifi disable");
+#endif
 }
 
 std::string ApiSystem::getIpAdress() 
@@ -488,12 +546,16 @@ std::vector<std::string> ApiSystem::getAvailableInstallArchitectures()
 
 std::vector<std::string> ApiSystem::getAvailableOverclocking() 
 {
+#ifdef _ENABLEEMUELEC
+	return executeEnumerationScript("echo no");
+#else
 	return executeEnumerationScript("batocera-overclock list");
+#endif
 }
 
 std::vector<std::string> ApiSystem::getSystemInformations() 
 {
-	return executeEnumerationScript("batocera-info");
+	return executeEnumerationScript("batocera-info --full");
 }
 
 std::vector<BiosSystem> ApiSystem::getBiosInformations() 
@@ -825,11 +887,11 @@ RetroAchievementInfo ApiSystem::getRetroAchievements()
 	return info;
 }
 
-std::vector<std::string> ApiSystem::getBatoceraThemesList() 
+std::vector<BatoceraTheme> ApiSystem::getBatoceraThemesList()
 {
 	LOG(LogDebug) << "ApiSystem::getBatoceraThemesList";
 
-	std::vector<std::string> res;
+	std::vector<BatoceraTheme> res;
 
 	std::string command = "batocera-es-theme list";
 	FILE *pipe = popen(command.c_str(), "r");
@@ -845,7 +907,18 @@ std::vector<std::string> ApiSystem::getBatoceraThemesList()
 		// provide only themes that are [A]vailable or [I]nstalled as a result
 		// (Eliminate [?] and other non-installable lines of text)
 		if ((strncmp(line, "[A]", 3) == 0) || (strncmp(line, "[I]", 3) == 0))
-			res.push_back(std::string(line));
+		{
+			auto parts = Utils::String::splitAny(line, " \t");
+			if (parts.size() < 2)
+				continue;
+
+			BatoceraTheme bt;
+			bt.isInstalled = (Utils::String::startsWith(parts[0], "[I]"));
+			bt.name = parts[1];
+			bt.url = parts.size() < 3 ? "" : (parts[2] == "-" ? parts[3] : parts[2]);
+
+			res.push_back(bt);
+		}
 	}
 	pclose(pipe);
 	return res;
@@ -856,29 +929,38 @@ std::pair<std::string, int> ApiSystem::installBatoceraTheme(std::string thname, 
 	return executeScript("batocera-es-theme install " + thname, func);
 }
 
-std::vector<std::string> ApiSystem::getBatoceraBezelsList() 
+std::pair<std::string, int> ApiSystem::uninstallBatoceraTheme(std::string thname, const std::function<void(const std::string)>& func)
+{
+	return executeScript("batocera-es-theme remove " + thname, func);
+}
+
+
+std::vector<BatoceraBezel> ApiSystem::getBatoceraBezelsList()
 {
 	LOG(LogInfo) << "ApiSystem::getBatoceraBezelsList";
 
-	std::vector<std::string> res;
+	std::vector<BatoceraBezel> res;
 
-	std::string command = "batocera-es-thebezelproject list";
-	FILE *pipe = popen(command.c_str(), "r");
-	if (pipe == NULL)
-		return res;
-
-	char line[1024];
-	char *pch;
-
-	while (fgets(line, 1024, pipe)) 
+	auto lines = executeEnumerationScript("batocera-es-thebezelproject list");
+	for (auto line : lines)
 	{
-		strtok(line, "\n");
-		// provide only themes that are [A]vailable or [I]nstalled as a result
-		// (Eliminate [?] and other non-installable lines of text)
-		if ((strncmp(line, "[A]", 3) == 0) || (strncmp(line, "[I]", 3) == 0))
-			res.push_back(std::string(line));
+		auto parts = Utils::String::splitAny(line, " \t");
+		if (parts.size() < 2)
+			continue;
+
+		if (!Utils::String::startsWith(parts[0], "[I]") && !Utils::String::startsWith(parts[0], "[A]"))
+			continue;
+
+		BatoceraBezel bz;
+		bz.isInstalled = (Utils::String::startsWith(parts[0], "[I]"));
+		bz.name = parts[1];
+		bz.url = parts.size() < 3 ? "" : (parts[2] == "-" ? parts[3] : parts[2]);
+		bz.folderPath = parts.size() < 4 ? "" : parts[3];
+
+		if (bz.name != "?")
+			res.push_back(bz);
 	}
-	pclose(pipe);
+
 	return res;
 }
 
@@ -887,31 +969,9 @@ std::pair<std::string, int> ApiSystem::installBatoceraBezel(std::string bezelsys
 	return executeScript("batocera-es-thebezelproject install " + bezelsystem, func);
 }
 
-std::pair<std::string, int> ApiSystem::uninstallBatoceraBezel(BusyComponent* ui, std::string bezelsystem) 
+std::pair<std::string, int> ApiSystem::uninstallBatoceraBezel(std::string bezelsystem, const std::function<void(const std::string)>& func)
 {
-	LOG(LogInfo) << "ApiSystem::uninstallBatoceraBezel " << bezelsystem;
-
-	std::string updatecommand = "batocera-es-thebezelproject remove " + bezelsystem;
-	
-	FILE *pipe = popen(updatecommand.c_str(), "r");
-	if (pipe == NULL)
-		return std::pair<std::string, int>(std::string("Error starting 'batocera-es-thebezelproject remove' command."), -1);
-
-	char line[1024] = "";
-
-	while (fgets(line, 1024, pipe)) 
-	{
-		strtok(line, "\n");
-		// Long theme names/URL can crash the GUI MsgBox
-		// "48" found by trials and errors. Ideally should be fixed
-		// in es-core MsgBox -- FIXME
-		if (strlen(line) > 48)
-			line[47] = '\0';
-		ui->setText(std::string(line));
-	}
-
-	int exitCode = WEXITSTATUS(pclose(pipe));
-	return std::pair<std::string, int>(std::string(line), exitCode);
+	return executeScript("batocera-es-thebezelproject remove " + bezelsystem, func);
 }
 
 std::string ApiSystem::getCRC32(std::string fileName, bool fromZipContents)
@@ -1173,15 +1233,23 @@ bool ApiSystem::isScriptingSupported(ScriptId script)
 		executables.push_back("pdftoppm");
 		executables.push_back("pdfinfo");
 		break;
+	case ApiSystem::BATOCERASTORE:
+		executables.push_back("batocera-store");
+		break;
 	}
 
 	if (executables.size() == 0)
 		return true;
 
 	for (auto executable : executables)
+#ifdef _ENABLEEMUELEC
+		if (!Utils::FileSystem::exists("/emuelec/scripts/batocera/" + executable))
+			return false;
+#else
 		if (!Utils::FileSystem::exists("/usr/bin/" + executable))
 			return false;
 
+#endif
 	return true;
 }
 
@@ -1346,6 +1414,119 @@ std::vector<std::string> ApiSystem::extractPdfImages(const std::string fileName,
 			continue;
 
 		ret.push_back(file);
+	}
+
+	std::sort(ret.begin(), ret.end());
+	return ret;
+}
+
+
+std::vector<PacmanPackage> ApiSystem::getBatoceraStorePackages()
+{
+	std::vector<PacmanPackage> packages;
+
+	LOG(LogDebug) << "ApiSystem::getBatoceraStorePackages";
+
+	auto res = executeEnumerationScript("batocera-store list");
+	std::string data = Utils::String::join(res, "\n");
+	if (data.empty())
+	{
+		LOG(LogError) << "Package list is empty";
+		return packages;
+	}
+
+	pugi::xml_document doc;
+	pugi::xml_parse_result result = doc.load(data.c_str());
+	if (!result)
+	{
+		LOG(LogError) << "Unable to parse packages";
+		return packages;
+	}
+
+	pugi::xml_node root = doc.child("packages");
+	if (!root)
+	{
+		LOG(LogError) << "Could not find <packages> node";
+		return packages;
+	}
+
+	for (pugi::xml_node pkgNode = root.child("package"); pkgNode; pkgNode = pkgNode.next_sibling("package"))
+	{
+		PacmanPackage package;
+
+		for (pugi::xml_node node = pkgNode.first_child(); node; node = node.next_sibling())
+		{
+			std::string tag = node.name();
+			if (tag == "name")
+				package.name = node.text().get();
+			if (tag == "repository")
+				package.repository = node.text().get();
+			if (tag == "available_version")
+				package.available_version = node.text().get();
+			if (tag == "description")
+				package.description = node.text().get();
+			if (tag == "group")
+				package.group = node.text().get(); // groups.push_back(
+			if (tag == "license")
+				package.licenses.push_back(node.text().get());
+			if (tag == "packager")
+				package.packager = node.text().get();
+			if (tag == "status")
+				package.status = node.text().get();
+			if (tag == "repository")
+				package.repository = node.text().get();
+			if (tag == "url")
+				package.url = node.text().get();			
+
+			if (tag == "download_size")
+				package.download_size = node.text().as_llong();
+			if (tag == "installed_size")
+				package.installed_size = node.text().as_llong();
+		}
+
+		if (!package.name.empty())
+			packages.push_back(package);		
+	}
+
+	return packages;
+}
+
+std::pair<std::string, int> ApiSystem::installBatoceraStorePackage(std::string name, const std::function<void(const std::string)>& func)
+{
+	return executeScript("batocera-store install " + name, func);
+}
+
+std::pair<std::string, int> ApiSystem::uninstallBatoceraStorePackage(std::string name, const std::function<void(const std::string)>& func)
+{
+	return executeScript("batocera-store remove " + name, func);
+}
+
+void ApiSystem::updateBatoceraStorePackageList()
+{
+	executeScript("batocera-store update");
+}
+
+std::vector<std::string> ApiSystem::getShaderList()
+{
+	Utils::FileSystem::FileSystemCacheActivator fsc;
+
+	std::vector<std::string> ret;
+
+	std::vector<std::string> folderList = { "/usr/share/batocera/shaders/configs", "/userdata/shaders/configs" };
+	for (auto folder : folderList)
+	{
+		for (auto file : Utils::FileSystem::getDirContent(folder, true))
+		{
+			if (Utils::FileSystem::getFileName(file) == "rendering-defaults.yml")
+			{
+				auto parent = Utils::FileSystem::getFileName(Utils::FileSystem::getParent(file));
+				if (parent == "configs")
+					continue;
+
+				if (std::find(ret.cbegin(), ret.cend(), parent) == ret.cend())
+					ret.push_back(Utils::FileSystem::getParent(file));
+			}
+		}
 	}
 
 	std::sort(ret.begin(), ret.end());

@@ -67,6 +67,7 @@ namespace PlatformIds
 		{ "psp",					PLAYSTATION_PORTABLE },
 		{ "snes",					SUPER_NINTENDO },
 		{ "scummvm",				SCUMMVM },
+		{ "x1",						SHARP_X1 },
 		{ "x68000",					SHARP_X6800 },
 		{ "pcengine",				TURBOGRAFX_16 }, // (aka PC Engine) HuCards onlyy
 		{ "pcenginecd",				TURBOGRAFX_CD }, // (aka PC Engine) CD-ROMs onlynly
@@ -93,6 +94,7 @@ namespace PlatformIds
 		{ "satellaview",			SATELLAVIEW },
 		{ "sufami",					SUFAMITURBO },
 		{ "zx81",					ZX81 },
+		{ "tic80",					TIC80 },
 
 		// batocera specific names
 		{ "gb2players",				GAME_BOY },
@@ -103,6 +105,7 @@ namespace PlatformIds
 		{ "oricatmos",				ORICATMOS },
 		{ "tyrquake",				QUAKE },
 		{ "mrboom",					MRBOOM },
+		{ "cannonball",					CANNONBALL },
 
 		// windows specific systems & names
 		{ "windows",				MOONLIGHT },
@@ -120,7 +123,7 @@ namespace PlatformIds
 		{ "apple2gs",				APPLE2GS },
 		{ "spectravideo",			SPECTRAVIDEO },
 		{ "palm",					PALMOS },
-		{ "daphne",					DAPHNEE },
+		{ "daphne",					DAPHNE },
 		{ "solarus",				SOLARUS },
 
 		{ "ignore",					PLATFORM_IGNORE },
@@ -155,11 +158,11 @@ namespace PlatformIds
 		{ 8,   { "cps3", "CPS-3" } },
 		{ 35,  { "aae", "Another Arcade Emulator" } },
 		{ 47,  { "cave", "Cave" } },
-		{ 49,  { "daphnee", "Daphnee" } },		
+		{ 49,  { "daphne", "Daphne" } },		
 		{ 53,  { "atomiswave", "Atomiswave" } },
 		{ 54,  { "model2", "Sega Model 2" } },
 		{ 55,  { "model3", "Sega Model 3" } },
-		{ 56,  { "daphnee", "Daphnee" } },
+		{ 56,  { "naomi", "Naomi" } },
 		{ 68,  { "neogeomvs", "Neo-Geo MVS" } }, // MVS
 		{ 69,  { "segastv", "Sega ST-V" } },
 		{ 112, { "taitox", "Taito Type X" } },

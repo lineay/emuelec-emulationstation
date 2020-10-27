@@ -317,6 +317,15 @@ bool InputManager::parseEvent(const SDL_Event& ev, Window* window)
 		//	return false;
 		//}
 
+#ifdef _ENABLEEMUELEC
+		/* use the POWER KEY to turn off EmuELEC, specially useful for GTKING-PRO and Odroid Go Advance*/
+        if(ev.key.keysym.sym == SDLK_POWER) {
+			Scripting::fireEvent("quit", "shutdown");
+			quitES(QuitMode::SHUTDOWN);
+			/*LOG(LogError) << "no quit?";*/
+			return false;
+		}
+#endif
 		window->input(getInputConfigByDevice(DEVICE_KEYBOARD), Input(DEVICE_KEYBOARD, TYPE_KEY, ev.key.keysym.sym, 1, false));
 		return true;
 
@@ -433,7 +442,7 @@ bool InputManager::loadInputConfig(InputConfig* config)
 		return true;
 
 	// Find system exact device
-	std::string sharedPath = Utils::FileSystem::getSharedConfigPath() + "/es_input.xml";
+	std::string sharedPath = Utils::FileSystem::getSharedConfigPath() + "/es_input.cfg";
 	if (tryLoadInputConfig(sharedPath, config, false))
 		return true;
 
@@ -465,9 +474,13 @@ void InputManager::loadDefaultKBConfig()
 	cfg->mapInput(BUTTON_BACK, Input(DEVICE_KEYBOARD, TYPE_KEY, SDLK_ESCAPE, 1, true));
 	cfg->mapInput("start", Input(DEVICE_KEYBOARD, TYPE_KEY, SDLK_F1, 1, true));
 	cfg->mapInput("select", Input(DEVICE_KEYBOARD, TYPE_KEY, SDLK_F2, 1, true));
-
+#ifdef _ENABLEEMUELEC
+	cfg->mapInput("lefttrigger", Input(DEVICE_KEYBOARD, TYPE_KEY, SDLK_RIGHTBRACKET, 1, true));
+	cfg->mapInput("righttrigger", Input(DEVICE_KEYBOARD, TYPE_KEY, SDLK_LEFTBRACKET, 1, true));
+#else
 	cfg->mapInput("pageup", Input(DEVICE_KEYBOARD, TYPE_KEY, SDLK_RIGHTBRACKET, 1, true));
 	cfg->mapInput("pagedown", Input(DEVICE_KEYBOARD, TYPE_KEY, SDLK_LEFTBRACKET, 1, true));
+#endif
 }
 
 void InputManager::writeDeviceConfig(InputConfig* config)
@@ -584,7 +597,11 @@ std::string InputManager::getConfigPath()
 
 std::string InputManager::getTemporaryConfigPath()
 {
+#ifdef _ENABLEEMUELEC
+	return Utils::FileSystem::getEsConfigPath() + "/es_temporaryinput.cfg";
+#else
 	return Utils::FileSystem::getEsConfigPath() + "/es_last_input.cfg";
+#endif
 }
 
 bool InputManager::initialized() const
@@ -745,6 +762,11 @@ std::string InputManager::configureEmulators() {
   for (int player = 0; player < MAX_PLAYERS; player++) {
     InputConfig * playerInputConfig = playerJoysticks[player];
     if(playerInputConfig != NULL){
+#ifdef _ENABLEEMUELEC
+      command << "-p" << player+1 << "index "      <<  playerInputConfig->getDeviceIndex();
+      command << " -p" << player+1 << "guid "       << playerInputConfig->getDeviceGUIDString();
+      command << " ";
+#else
       command <<  "-p" << player+1 << "index "      <<  playerInputConfig->getDeviceIndex();
       command << " -p" << player+1 << "guid "       << playerInputConfig->getDeviceGUIDString();
       command << " -p" << player+1 << "name \""     <<  playerInputConfig->getDeviceName() << "\"";
@@ -752,6 +774,7 @@ std::string InputManager::configureEmulators() {
       command << " -p" << player+1 << "nbhats "     << playerInputConfig->getDeviceNbHats();
       command << " -p" << player+1 << "nbaxes "     << playerInputConfig->getDeviceNbAxes();
       command << " ";
+#endif
     }
   }
   LOG(LogInfo) << "Configure emulators command : " << command.str().c_str();

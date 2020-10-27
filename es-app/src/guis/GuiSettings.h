@@ -11,7 +11,8 @@ public:
 	GuiSettings(Window* window, 
 		const std::string title,
 		const std::string customButton = "",
-		const std::function<void(GuiSettings*)>& func = nullptr);
+		const std::function<void(GuiSettings*)>& func = nullptr,
+		bool animate = false);
 	virtual ~GuiSettings(); // just calls save();
 
 	void close();
@@ -21,9 +22,11 @@ public:
 	inline void addWithLabel(const std::string& label, const std::shared_ptr<GuiComponent>& comp, bool setCursorHere = false) { mMenu.addWithLabel(label, comp, nullptr, "", setCursorHere); };
 	inline void addWithDescription(const std::string& label, const std::string& description, const std::shared_ptr<GuiComponent>& comp, bool setCursorHere = false) { mMenu.addWithDescription(label, description, comp, nullptr, "", setCursorHere); };
 	inline void addSaveFunc(const std::function<void()>& func) { mSaveFuncs.push_back(func); };
-	inline void addEntry(const std::string name, bool add_arrow = false, const std::function<void()>& func = nullptr, const std::string iconName = "", bool onButtonRelease = false) { mMenu.addEntry(name, add_arrow, func, iconName, false, true, onButtonRelease); };
+	inline void addEntry(const std::string name, bool add_arrow = false, const std::function<void()>& func = nullptr, const std::string iconName = "", bool onButtonRelease = false, bool setCursorHere = false) { mMenu.addEntry(name, add_arrow, func, iconName, setCursorHere, true, onButtonRelease); };
 
 	inline void addGroup(const std::string& label) { mMenu.addGroup(label); };
+
+	void addInputTextRow(std::string title, const char* settingsID, bool password, bool storeInSettings = false, const std::function<void(Window*, std::string/*title*/, std::string /*value*/, const std::function<void(std::string)>& onsave)>& customEditor = nullptr);
 
 	void addSubMenu(const std::string& label, const std::function<void()>& func);
 

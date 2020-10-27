@@ -33,7 +33,7 @@
 #include "ImageIO.h"
 #include "components/VideoVlcComponent.h"
 #include <csignal>
-
+#include "InputConfig.h"
 
 #ifdef WIN32
 #include <Windows.h>
@@ -189,6 +189,13 @@ bool parseArgs(int argc, char* argv[])
 			int maxVRAM = atoi(argv[i + 1]);
 			Settings::getInstance()->setInt("MaxVRAM", maxVRAM);
 		}
+#ifdef _ENABLEEMUELEC
+		else if(strcmp(argv[i], "--log-path") == 0)
+		{
+			std::string logPATH = argv[i + 1];
+			Settings::getInstance()->setString("LogPath", logPATH);
+		}
+#endif
 		else if (strcmp(argv[i], "--force-kiosk") == 0)
 		{
 			Settings::getInstance()->setBool("ForceKiosk", true);
@@ -231,6 +238,9 @@ bool parseArgs(int argc, char* argv[])
 				"--force-kiosk		Force the UI mode to be Kiosk\n"
 				"--force-disable-filters		Force the UI to ignore applied filters in gamelist\n"
 				"--home [path]		Directory to use as home path\n"
+#ifdef _ENABLEEMUELEC
+				"--log-path [path]		Directory to use for log\n"
+#endif
 				"--help, -h			summon a sentient, angry tuba\n\n"
 				"--monitor [index]			monitor index\n\n"				
 				"More information available in README.md.\n";
@@ -536,6 +546,8 @@ int main(int argc, char* argv[])
 	if (systemConf->getBool("kodi.enabled", true) && systemConf->getBool("kodi.atstartup"))
 		ApiSystem::getInstance()->launchKodi(&window);
 #endif
+
+	InputConfig::AssignActionButtons();
 
 	ApiSystem::getInstance()->getIpAdress(); // batocera
 

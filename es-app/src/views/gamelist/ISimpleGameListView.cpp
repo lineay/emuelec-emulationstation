@@ -10,7 +10,10 @@
 #include "guis/GuiMsgBox.h"
 #include "Window.h"
 #include "LocaleES.h"
+#include "guis/GuiSettings.h"
 #include <set>
+#include "components/SwitchComponent.h"
+#include "ApiSystem.h"
 
 ISimpleGameListView::ISimpleGameListView(Window* window, FolderData* root) : IGameListView(window, root),
 	mHeaderText(window), mHeaderImage(window), mBackground(window), mFolderPath(window)
@@ -187,7 +190,12 @@ bool ISimpleGameListView::input(InputConfig* config, Input input)
 			}
 
 			return true;
-		}else if(config->isMappedLike(getQuickSystemSelectRightButton(), input) || config->isMappedLike("r2", input))
+		}else if(
+#ifdef _ENABLEEMUELEC
+		config->isMappedLike(getQuickSystemSelectRightButton(), input) || config->isMappedLike("rightshoulder", input))
+#else
+		config->isMappedLike(getQuickSystemSelectRightButton(), input) || config->isMappedLike("r2", input))
+#endif
 		{
 			if(Settings::getInstance()->getBool("QuickSystemSelect"))
 			{
@@ -195,7 +203,12 @@ bool ISimpleGameListView::input(InputConfig* config, Input input)
 				ViewController::get()->goToNextGameList();
 				return true;
 			}
-		}else if(config->isMappedLike(getQuickSystemSelectLeftButton(), input) || config->isMappedLike("l2", input))
+		}else if(
+#ifdef _ENABLEEMUELEC
+		config->isMappedLike(getQuickSystemSelectLeftButton(), input) || config->isMappedLike("leftshoulder", input))
+#else
+		config->isMappedLike(getQuickSystemSelectLeftButton(), input) || config->isMappedLike("l2", input))
+#endif
 		{
 			if(Settings::getInstance()->getBool("QuickSystemSelect"))
 			{
@@ -209,14 +222,31 @@ bool ISimpleGameListView::input(InputConfig* config, Input input)
 			if(cursor != nullptr && cursor->isNetplaySupported())
 			{
 				Window* window = mWindow;
+				
+				GuiSettings* msgBox = new GuiSettings(mWindow, _("NETPLAY"), "", nullptr, true);
+				msgBox->setSubTitle(cursor->getName());
+				msgBox->setTag("popup");				
+				msgBox->addGroup(_("START GAME"));
 
-				window->pushGui(new GuiMsgBox(mWindow, _("LAUNCH THE GAME AS NETPLAY HOST ?"), _("YES"), [this, window, cursor]
+				msgBox->addEntry(_U("\uF144 ") + _("START NETPLAY HOST"), false, [this, msgBox, cursor]
 				{
+					if (ApiSystem::getInstance()->getIpAdress() == "NOT CONNECTED")
+					{
+						mWindow->pushGui(new GuiMsgBox(mWindow, _("YOU ARE NOT CONNECTED TO A NETWORK"), _("OK"), nullptr));
+						return;
+					}
+				
 					LaunchGameOptions options;
 					options.netPlayMode = SERVER;
 					ViewController::get()->launch(cursor, options);
-
-				}, _("NO"), nullptr));
+					msgBox->close();					
+				});
+			
+				msgBox->addGroup(_("OPTIONS"));
+				msgBox->addInputTextRow(_("SET PLAYER PASSWORD"), "global.netplay.password", false);
+				msgBox->addInputTextRow(_("SET VIEWER PASSWORD"), "global.netplay.spectatepassword", false);
+				
+				mWindow->pushGui(msgBox);
 
 				return true;
 			}				

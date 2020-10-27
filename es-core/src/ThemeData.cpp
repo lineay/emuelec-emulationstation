@@ -12,9 +12,10 @@
 #include "SystemConf.h"
 #include <algorithm>
 #include "LocaleES.h"
+#include "anim/ThemeStoryboard.h"
 
 std::vector<std::string> ThemeData::sSupportedViews { { "system" }, { "basic" }, { "detailed" }, { "grid" }, { "video" }, { "menu" }, { "screen" }, { "splash" } };
-std::vector<std::string> ThemeData::sSupportedFeatures { { "video" }, { "carousel" }, { "z-index" }, { "visible" } };
+std::vector<std::string> ThemeData::sSupportedFeatures { { "video" }, { "carousel" }, { "z-index" }, { "visible" },{ "manufacturer" } };
 
 std::map<std::string, std::map<std::string, ThemeData::ElementPropertyType>> ThemeData::sElementMap {
 
@@ -23,6 +24,14 @@ std::map<std::string, std::map<std::string, ThemeData::ElementPropertyType>> The
 	{ "image", {
 		{ "pos", NORMALIZED_PAIR },
 		{ "size", NORMALIZED_PAIR },
+		
+		{ "x", FLOAT },
+		{ "y", FLOAT },
+		{ "h", FLOAT },
+		{ "w", FLOAT },
+		{ "scale", FLOAT },
+		{ "scaleOrigin", NORMALIZED_PAIR },
+
 		{ "maxSize", NORMALIZED_PAIR },
 		{ "minSize", NORMALIZED_PAIR },
 		{ "origin", NORMALIZED_PAIR },
@@ -48,6 +57,15 @@ std::map<std::string, std::map<std::string, ThemeData::ElementPropertyType>> The
 	{ "imagegrid", {
 		{ "pos", NORMALIZED_PAIR },
 		{ "size", NORMALIZED_PAIR },
+
+		{ "x", FLOAT },
+		{ "y", FLOAT },
+		{ "h", FLOAT },
+		{ "w", FLOAT },
+		{ "scale", FLOAT },
+		{ "scaleOrigin", NORMALIZED_PAIR },
+		{ "opacity", FLOAT },
+
 		{ "margin", NORMALIZED_PAIR },
 		{ "padding", NORMALIZED_RECT },
 		{ "autoLayout", NORMALIZED_PAIR },
@@ -60,6 +78,12 @@ std::map<std::string, std::map<std::string, ThemeData::ElementPropertyType>> The
 		{ "showVideoAtDelay", FLOAT },
 		{ "scrollDirection", STRING },
 		{ "scrollSound", PATH },
+
+		{ "scrollbarColor", COLOR },
+		{ "scrollbarSize", FLOAT },
+		{ "scrollbarCorner", FLOAT },
+		{ "scrollbarImagePath", PATH },
+
 		{ "centerSelection", STRING },
 		{ "scrollLoop", BOOLEAN } } },
 	{ "gridtile", {
@@ -77,6 +101,15 @@ std::map<std::string, std::map<std::string, ThemeData::ElementPropertyType>> The
 	{ "text", {
 		{ "pos", NORMALIZED_PAIR },
 		{ "size", NORMALIZED_PAIR },
+
+		{ "x", FLOAT },
+		{ "y", FLOAT },
+		{ "h", FLOAT },
+		{ "w", FLOAT },
+		{ "scale", FLOAT },
+		{ "scaleOrigin", NORMALIZED_PAIR },
+		{ "opacity", FLOAT },
+
 		{ "origin", NORMALIZED_PAIR },
 		{ "rotation", FLOAT },
 		{ "rotationOrigin", NORMALIZED_PAIR },
@@ -96,12 +129,24 @@ std::map<std::string, std::map<std::string, ThemeData::ElementPropertyType>> The
 		{ "glowSize", FLOAT },
 		{ "glowOffset", NORMALIZED_PAIR },
 		{ "singleLineScroll", BOOLEAN },
+		{ "autoScroll", STRING },
 		{ "padding", NORMALIZED_RECT },
 		{ "visible", BOOLEAN },
 		{ "zIndex", FLOAT } } },
 	{ "textlist", {
 		{ "pos", NORMALIZED_PAIR },
 		{ "size", NORMALIZED_PAIR },
+
+		{ "x", FLOAT },
+		{ "y", FLOAT },
+		{ "h", FLOAT },
+		{ "w", FLOAT },
+		{ "scale", FLOAT },
+		{ "scaleOrigin", NORMALIZED_PAIR },
+		{ "opacity", FLOAT },
+		{ "rotation", FLOAT },
+		{ "rotationOrigin", NORMALIZED_PAIR },
+
 		{ "origin", NORMALIZED_PAIR },
 		{ "selectorHeight", FLOAT },
 		{ "selectorOffsetY", FLOAT },
@@ -121,6 +166,12 @@ std::map<std::string, std::map<std::string, ThemeData::ElementPropertyType>> The
 		{ "forceUppercase", BOOLEAN },
 		{ "lineSpacing", FLOAT },
 		{ "lines", FLOAT },
+
+		{ "scrollbarColor", COLOR },
+		{ "scrollbarSize", FLOAT },
+		{ "scrollbarCorner", FLOAT },
+		{ "scrollbarAlignment", STRING },		
+
 		{ "zIndex", FLOAT } } },
 	{ "container", {
 		{ "pos", NORMALIZED_PAIR },
@@ -131,6 +182,17 @@ std::map<std::string, std::map<std::string, ThemeData::ElementPropertyType>> The
 	{ "ninepatch", {
 		{ "pos", NORMALIZED_PAIR },
 		{ "size", NORMALIZED_PAIR },
+
+		{ "x", FLOAT },
+		{ "y", FLOAT },
+		{ "h", FLOAT },
+		{ "w", FLOAT },
+		{ "scale", FLOAT },
+		{ "scaleOrigin", NORMALIZED_PAIR },
+		{ "opacity", FLOAT },
+		{ "rotation", FLOAT },
+		{ "rotationOrigin", NORMALIZED_PAIR },
+
 		{ "path", PATH },
 	 	{ "visible", BOOLEAN },
 		{ "color", COLOR },
@@ -143,6 +205,15 @@ std::map<std::string, std::map<std::string, ThemeData::ElementPropertyType>> The
 	{ "datetime", {
 		{ "pos", NORMALIZED_PAIR },
 		{ "size", NORMALIZED_PAIR },
+
+		{ "x", FLOAT },
+		{ "y", FLOAT },
+		{ "h", FLOAT },
+		{ "w", FLOAT },
+		{ "scale", FLOAT },
+		{ "scaleOrigin", NORMALIZED_PAIR },
+		{ "opacity", FLOAT },
+
 		{ "origin", NORMALIZED_PAIR },
 		{ "rotation", FLOAT },
 		{ "rotationOrigin", NORMALIZED_PAIR },
@@ -161,6 +232,15 @@ std::map<std::string, std::map<std::string, ThemeData::ElementPropertyType>> The
 	{ "rating", {
 		{ "pos", NORMALIZED_PAIR },
 		{ "size", NORMALIZED_PAIR },
+
+		{ "x", FLOAT },
+		{ "y", FLOAT },
+		{ "h", FLOAT },
+		{ "w", FLOAT },
+		{ "scale", FLOAT },
+		{ "scaleOrigin", NORMALIZED_PAIR },
+		{ "opacity", FLOAT },
+
 		{ "origin", NORMALIZED_PAIR },
 		{ "rotation", FLOAT },
 		{ "rotationOrigin", NORMALIZED_PAIR },
@@ -214,23 +294,33 @@ std::map<std::string, std::map<std::string, ThemeData::ElementPropertyType>> The
 		{ "iconStart", PATH },
 		{ "iconSelect", PATH } } },
 	{ "video", {
+		// Common properties
 		{ "pos", NORMALIZED_PAIR },
 		{ "size", NORMALIZED_PAIR },
-		{ "maxSize", NORMALIZED_PAIR },
-		{ "minSize", NORMALIZED_PAIR },
+		{ "x", FLOAT },
+		{ "y", FLOAT },
+		{ "h", FLOAT },
+		{ "w", FLOAT },
+		{ "scale", FLOAT },
+		{ "scaleOrigin", NORMALIZED_PAIR },
+		{ "opacity", FLOAT },
 		{ "origin", NORMALIZED_PAIR },
 		{ "rotation", FLOAT },
 		{ "rotationOrigin", NORMALIZED_PAIR },
+		{ "visible", BOOLEAN },
+		{ "zIndex", FLOAT },
+		// video properties
+		{ "maxSize", NORMALIZED_PAIR },
+		{ "minSize", NORMALIZED_PAIR },
 		{ "default", PATH },
 		{ "path", PATH },
 		{ "delay", FLOAT },
 		{ "effect", STRING },
-	 	{ "visible", BOOLEAN },
 		{ "roundCorners", FLOAT },
 		{ "color", COLOR },
-	 	{ "zIndex", FLOAT },		
 		{ "snapshotSource", STRING }, // image, thumbnail, marquee
 		{ "loops", FLOAT }, // Number of loops to do -1 (default) is infinite 
+		{ "audio", BOOLEAN },
 		{ "showSnapshotNoVideo", BOOLEAN },
 		{ "showSnapshotDelay", BOOLEAN } } },
 	{ "carousel", {
@@ -428,6 +518,22 @@ void ThemeData::loadFile(const std::string system, std::map<std::string, std::st
 	parseVariables(root);
 	parseTheme(root);
 	
+	std::string themeName = Utils::String::toLower(Settings::getInstance()->getString("ThemeSet"));
+	if (themeName.find("next-pixel") != std::string::npos || themeName.find("alekfull") != std::string::npos)
+	{
+		auto systemView = mViews.find("system");
+		if (systemView != mViews.cend())
+		{
+			auto systemcarousel = systemView->second.elements.find("systemcarousel");
+			if (systemcarousel != systemView->second.elements.cend())
+			{
+				auto defaultTransition = systemcarousel->second.properties.find("defaultTransition");
+				if (defaultTransition == systemcarousel->second.properties.cend() || defaultTransition->second.s == "instant")
+					systemcarousel->second.properties["defaultTransition"] = std::string("fade & slide");
+			}
+		}
+	}
+
 	if (system != "splash" && system != "imageviewer")
 	{
 		mMenuTheme = nullptr;
@@ -453,42 +559,55 @@ const std::shared_ptr<ThemeData::ThemeMenu>& ThemeData::getMenuTheme()
 
 std::string ThemeData::resolveSystemVariable(const std::string& systemThemeFolder, const std::string& path)
 {
-	size_t start_pos = path.find("$system");
+	size_t start_pos = path.find("$");
 	if (start_pos == std::string::npos)
 		return path;
 
 	std::string result = path;
-	result.replace(start_pos, 7, systemThemeFolder);
 
-	if (!Utils::FileSystem::exists(result))
+	start_pos = result.find("$country");
+	if (start_pos != std::string::npos)
+		result.replace(start_pos, 8, mRegion);
+
+	start_pos = result.find("$language");
+	if (start_pos != std::string::npos)
+		result.replace(start_pos, 9, mLanguage);
+
+	start_pos = result.find("$system");
+	if (start_pos != std::string::npos)
 	{
-		std::string compatibleFolder = systemThemeFolder;
+		result.replace(start_pos, 7, systemThemeFolder);
 
-		if (compatibleFolder == "sg-1000")
-			compatibleFolder = "sg1000";
-		else if (compatibleFolder == "msx")
-			compatibleFolder = "msx1";
-		else if (compatibleFolder == "atarilynx")
-			compatibleFolder = "lynx";
-		else if (compatibleFolder == "atarijaguar")
-			compatibleFolder = "jaguar";
-		else if (compatibleFolder == "gameandwatch")
-			compatibleFolder = "gw";
-		else if (compatibleFolder == "amiga")
-			compatibleFolder = "amiga600";
-		else if (compatibleFolder == "amiga500")
-			compatibleFolder = "amiga600";
-		else if (compatibleFolder == "auto-favorites")
-			compatibleFolder = "favorites";
-		else if (compatibleFolder == "thomson")
-			compatibleFolder = "to8";
-		else if (compatibleFolder == "prboom")
-			compatibleFolder = "doom"; 
-
-		if (compatibleFolder != systemThemeFolder)
+		if (!Utils::FileSystem::exists(result))
 		{
-			result = path;
-			result.replace(start_pos, 7, compatibleFolder);
+			std::string compatibleFolder = systemThemeFolder;
+
+			if (compatibleFolder == "sg-1000")
+				compatibleFolder = "sg1000";
+			else if (compatibleFolder == "msx")
+				compatibleFolder = "msx1";
+			else if (compatibleFolder == "atarilynx")
+				compatibleFolder = "lynx";
+			else if (compatibleFolder == "atarijaguar")
+				compatibleFolder = "jaguar";
+			else if (compatibleFolder == "gameandwatch")
+				compatibleFolder = "gw";
+			else if (compatibleFolder == "amiga")
+				compatibleFolder = "amiga600";
+			else if (compatibleFolder == "amiga500")
+				compatibleFolder = "amiga600";
+			else if (compatibleFolder == "auto-favorites")
+				compatibleFolder = "favorites";
+			else if (compatibleFolder == "thomson")
+				compatibleFolder = "to8";
+			else if (compatibleFolder == "prboom")
+				compatibleFolder = "doom";
+
+			if (compatibleFolder != systemThemeFolder)
+			{
+				result = path;
+				result.replace(start_pos, 7, compatibleFolder);
+			}
 		}
 	}
 
@@ -548,7 +667,6 @@ bool ThemeData::parseSubset(const pugi::xml_node& node)
 			mSubsets.push_back(subSet);
 		}
 	}
-
 	
 	if (subsetAttr == "colorset")
 	{
@@ -626,16 +744,13 @@ void ThemeData::parseInclude(const pugi::xml_node& node)
 	if (relPath.empty())
 		return;
 
-	std::string path = Utils::FileSystem::resolveRelativePath(relPath, Utils::FileSystem::getParent(mPaths.back()), true);
-	path = resolveSystemVariable(mSystemThemeFolder, path);
+	std::string path = Utils::FileSystem::resolveRelativePath(resolveSystemVariable(mSystemThemeFolder, relPath), Utils::FileSystem::getParent(mPaths.back()), true);
 
 	if (!ResourceManager::getInstance()->fileExists(path))
 	{
 		if (relPath.find("$") != std::string::npos && relPath.find("${") == std::string::npos)
 		{
-			path = Utils::FileSystem::resolveRelativePath(relPath, Utils::FileSystem::getParent(mPaths.back()), true);
-			path = resolveSystemVariable("default", path);
-
+			path = Utils::FileSystem::resolveRelativePath(resolveSystemVariable("default", relPath), Utils::FileSystem::getParent(mPaths.back()), true);
 			if (ResourceManager::getInstance()->fileExists(path))
 			{
 				if (mPaths.size() == 1)
@@ -690,6 +805,13 @@ void ThemeData::parseFeature(const pugi::xml_node& node)
 
 	const std::string supportedAttr = node.attribute("supported").as_string();
 
+	if (supportedAttr == "manufacturer")
+	{
+		auto it = mVariables.find("system.manufacturer");
+		if (it == mVariables.cend() || (*it).second.empty())
+			return;
+	}
+
 	if (std::find(sSupportedFeatures.cbegin(), sSupportedFeatures.cend(), supportedAttr) != sSupportedFeatures.cend())
 		parseViews(node);
 }
@@ -718,7 +840,7 @@ void ThemeData::parseVariables(const pugi::xml_node& root)
 	for (pugi::xml_node variables = root.child("variables"); variables; variables = variables.next_sibling("variables"))
 	{
 		if (!parseFilterAttributes(variables))
-			return;
+			continue;
 
 		for (pugi::xml_node_iterator it = variables.begin(); it != variables.end(); ++it)
 			parseVariable(*it);
@@ -790,6 +912,61 @@ bool ThemeData::parseFilterAttributes(const pugi::xml_node& node)
 			return false;
 	}
 
+	if (node.attribute("ifSubset"))
+	{
+		const std::string ifSubset = node.attribute("ifSubset").as_string();
+		for (auto subset : Utils::String::split(ifSubset, ',' , true))
+		{
+			auto splits = Utils::String::split(Utils::String::trim(subset), ':', true);
+			if (splits.size() == 2)
+			{
+				const std::string subsetToFind = Utils::String::trim(splits[0]);
+				const std::string subsetValue = Utils::String::trim(splits[1]);
+
+				std::string selectedSubset = Settings::getInstance()->getString("subset." + mSystemThemeFolder + "." + subsetToFind);
+				if (selectedSubset.empty())
+				{
+					selectedSubset = Settings::getInstance()->getString("subset." + subsetToFind);
+
+					if (subsetToFind == "systemview")
+						selectedSubset = mSystemview;
+					else if (subsetToFind == "gamelistview")
+						selectedSubset = mGamelistview;
+					else if (subsetToFind == "iconset")
+						selectedSubset = mIconset;
+					else if (subsetToFind == "colorset")
+						selectedSubset = mColorset;
+				}
+
+				if (selectedSubset.empty())
+				{
+					for (const auto& it : mSubsets)
+					{
+						if (it.subset == subsetToFind)
+						{
+							selectedSubset = it.name;
+							break;
+						}
+					}
+				}
+
+				if (selectedSubset.empty())
+					return true;
+
+				bool hasValue = false;
+
+				auto values = Utils::String::split(Utils::String::trim(subsetValue), '|', true);
+				for (auto value : values)
+					if (selectedSubset == value)
+						hasValue = true;;
+
+				if (!hasValue)
+					return false;
+			}
+		}
+
+	}
+
 	return true;
 }
 
@@ -798,7 +975,7 @@ void ThemeData::parseTheme(const pugi::xml_node& root)
 	if (root.attribute("defaultView"))
 		mDefaultView = root.attribute("defaultView").as_string();
 
-	if (mVersion <= 4)
+	if (mVersion <= 6)
 	{
 		// Unfortunately, recalbox does not do things in order, features have to be loaded after
 		for (pugi::xml_node node = root.child("include"); node; node = node.next_sibling("include"))
@@ -809,6 +986,10 @@ void ThemeData::parseTheme(const pugi::xml_node& root)
 
 		for (pugi::xml_node node = root.child("customView"); node; node = node.next_sibling("customView"))
 			parseCustomView(node, root);
+
+		// Unfortunately, recalbox & retropie don't process elements in order, features have to be loaded last
+		for (pugi::xml_node node = root.child("feature"); node; node = node.next_sibling("feature"))
+			parseFeature(node);
 	}
 	else
 	{
@@ -827,12 +1008,10 @@ void ThemeData::parseTheme(const pugi::xml_node& root)
 				parseCustomView(node, root);
 			else if (name == "subset")
 				parseSubsetElement(node);
+			else if (name == "feature")
+				parseFeature(node);
 		}
 	}
-
-	// Unfortunately, recalbox does not do things in order, features have to be loaded after
-	for (pugi::xml_node node = root.child("feature"); node; node = node.next_sibling("feature"))
-		parseFeature(node);
 }
 
 void ThemeData::parseSubsetElement(const pugi::xml_node& root)
@@ -892,7 +1071,7 @@ void ThemeData::parseCustomViewBaseClass(const pugi::xml_node& root, ThemeView& 
 	if (!baseView.baseType.empty())
 		parseCustomViewBaseClass(root, view, baseView.baseType);
 
-	for (auto element : baseView.elements)
+	for (auto& element : baseView.elements)
 	{
 		view.elements.erase(element.first);			
 		view.elements.insert(std::pair<std::string, ThemeElement>(element.first, element.second));
@@ -1080,6 +1259,28 @@ void ThemeData::parseElement(const pugi::xml_node& root, const std::map<std::str
 		auto typeIt = typeMap.find(node.name());
 		if(typeIt == typeMap.cend())
 		{
+			if (std::string(node.name()) == "storyboard")
+			{
+				auto storyBoard = new ThemeStoryboard();
+				if (!storyBoard->fromXmlNode(node, typeMap))
+				{
+					LOG(LogWarning) << "Storyboard \"" << node.name() << "\" has no <animation> items !";
+					delete storyBoard;
+				}
+				else
+				{
+					auto sb = element.mStoryBoards.find(storyBoard->eventName);
+					if (sb != element.mStoryBoards.cend())
+						delete sb->second;
+
+					element.mStoryBoards[storyBoard->eventName] = storyBoard;
+
+					LOG(LogInfo) << "Storyboard \"" << node.name() << "\"!";
+				}
+
+				continue;
+			}
+
 			// Exception for menuIcons that can be extended
 			if (element.type == "menuIcons")
 				type = PATH;
@@ -1173,7 +1374,7 @@ void ThemeData::parseElement(const pugi::xml_node& root, const std::map<std::str
 
 			if (path[0] == '/')
 			{
-#if WIN32
+#if WIN32 || defined _ENABLEEMUELEC
 				path = Utils::String::replace(path,
 					"/recalbox/share_init/system/.emulationstation/themes",
 					Utils::FileSystem::getEsConfigPath() + "/themes");
@@ -1285,6 +1486,21 @@ const ThemeData::ThemeElement* ThemeData::getElement(const std::string& view, co
 	}
 
 	return &elemIt->second;
+}
+
+const std::vector<std::string> ThemeData::getElementNames(const std::string& view, const std::string& expectedType) const
+{
+	std::vector<std::string> ret;
+
+	auto viewIt = mViews.find(view);
+	if (viewIt != mViews.cend())
+	{
+		for (auto& element : viewIt->second.elements)
+			if (element.second.type == expectedType)
+				ret.push_back(element.first);
+	}
+
+	return ret;
 }
 
 const std::shared_ptr<ThemeData>& ThemeData::getDefault()
@@ -1661,4 +1877,22 @@ std::string	ThemeData::getDefaultSubSetValue(const std::string subsetname)
 bool ThemeData::ThemeView::isOfType(const std::string type)
 {
 	return baseType == type || std::find(baseTypes.cbegin(), baseTypes.cend(), type) != baseTypes.cend();
-};
+}
+
+ThemeData::ThemeElement::ThemeElement(const ThemeElement& src)
+{
+	extra = src.extra;
+	type = src.type;
+	properties = src.properties;
+
+	for (auto sb : src.mStoryBoards)
+		mStoryBoards[sb.first] = new ThemeStoryboard(*sb.second);
+}
+
+ThemeData::ThemeElement::~ThemeElement()
+{
+	for (auto sb : mStoryBoards)
+		delete sb.second;
+
+	mStoryBoards.clear();
+}

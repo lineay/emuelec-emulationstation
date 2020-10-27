@@ -24,6 +24,7 @@
 #include <time.h>
 #include <algorithm>
 #include "LangParser.h"
+#include "resources/ResourceManager.h"
 
 FileData::FileData(FileType type, const std::string& path, SystemData* system)
 	: mType(type), mSystem(system), mParent(NULL), mMetadata(type == GAME ? GAME_METADATA : FOLDER_METADATA) // metadata is REALLY set in the constructor!
@@ -31,8 +32,8 @@ FileData::FileData(FileType type, const std::string& path, SystemData* system)
 	mPath = Utils::FileSystem::createRelativePath(path, getSystemEnvData()->mStartPath, false);
 	
 	// metadata needs at least a name field (since that's what getName() will return)
-	if (mMetadata.get("name").empty())
-		mMetadata.set("name", getDisplayName());
+	if (mMetadata.get(MetaDataId::Name).empty())
+		mMetadata.set(MetaDataId::Name, getDisplayName());
 	
 	mMetadata.resetChangedFlag();
 
@@ -76,6 +77,9 @@ const std::string FileData::getConfigurationName()
 	std::string gameConf = Utils::FileSystem::getFileName(getPath());
 	gameConf = Utils::String::replace(gameConf, "=", "");
 	gameConf = Utils::String::replace(gameConf, "#", "");
+#ifdef _ENABLEEMUELEC
+	gameConf = Utils::String::replace(gameConf, "'", "'\\''");
+#endif
 	gameConf = getSourceFileData()->getSystem()->getName() + std::string("[\"") + gameConf + std::string("\"]");
 	return gameConf;
 }
@@ -180,10 +184,12 @@ const bool FileData::getKidGame()
 }
 
 static std::shared_ptr<bool> showFilenames;
+static std::shared_ptr<bool> collectionShowSystemInfo;
 
 void FileData::resetSettings() 
 {
 	showFilenames = nullptr;
+	collectionShowSystemInfo = nullptr;
 }
 
 const std::string FileData::getName()
@@ -200,7 +206,7 @@ const std::string FileData::getName()
 			return getDisplayName();
 	}
 
-	return getMetadata().getName();
+	return mMetadata.getName();
 }
 
 const std::string FileData::getVideoPath()
@@ -320,6 +326,9 @@ void FileData::launchGame(Window* window, LaunchGameOptions options)
 	const std::string controllersConfig = InputManager::getInstance()->configureEmulators();
 
 	bool hideWindow = Settings::getInstance()->getBool("HideWindow");
+#if !WIN32
+	hideWindow = false;
+#endif
 	window->deinit(hideWindow);
 	
 	std::string systemName = system->getName();
@@ -375,14 +384,24 @@ void FileData::launchGame(Window* window, LaunchGameOptions options)
 	if (options.netPlayMode != DISABLED && (forceCore || gameToUpdate->isNetplaySupported()) && command.find("%NETPLAY%") == std::string::npos)
 		command = command + " %NETPLAY%"; // Add command line parameter if the netplay option is defined at <core netplay="true"> level
 
-	if (options.netPlayMode == CLIENT)
+	if (options.netPlayMode == CLIENT || options.netPlayMode == SPECTATOR)
 	{
+		std::string mode = (options.netPlayMode == SPECTATOR ? "spectator" : "client");
+		std::string pass;
+		
+		if (!options.netplayClientPassword.empty())
+			pass = " -netplaypass " + options.netplayClientPassword;
+
 #if WIN32
 		if (Utils::String::toLower(command).find("retroarch.exe") != std::string::npos)
 			command = Utils::String::replace(command, "%NETPLAY%", "--connect " + options.ip + " --port " + std::to_string(options.port) + " --nick " + SystemConf::getInstance()->get("global.netplay.nickname"));
 		else
 #endif
-		command = Utils::String::replace(command, "%NETPLAY%", "-netplaymode client -netplayport " + std::to_string(options.port) + " -netplayip " + options.ip);
+#ifdef _ENABLEEMUELEC
+		command = Utils::String::replace(command, "%NETPLAY%", "--connect " + options.ip + " --port " + std::to_string(options.port) + " --nick " + SystemConf::getInstance()->get("global.netplay.nickname"));
+#else
+		command = Utils::String::replace(command, "%NETPLAY%", "-netplaymode " + mode + " -netplayport " + std::to_string(options.port) + " -netplayip " + options.ip + pass);
+#endif
 	}
 	else if (options.netPlayMode == SERVER)
 	{
@@ -391,7 +410,11 @@ void FileData::launchGame(Window* window, LaunchGameOptions options)
 			command = Utils::String::replace(command, "%NETPLAY%", "--host --port " + SystemConf::getInstance()->get("global.netplay.port") + " --nick " + SystemConf::getInstance()->get("global.netplay.nickname"));
 		else
 #endif
+#ifdef _ENABLEEMUELEC
+		command = Utils::String::replace(command, "%NETPLAY%", "--host --port " + SystemConf::getInstance()->get("global.netplay.port") + " --nick " + SystemConf::getInstance()->get("global.netplay.nickname"));
+#else
 		command = Utils::String::replace(command, "%NETPLAY%", "-netplaymode host");
+#endif
 	}
 	else
 		command = Utils::String::replace(command, "%NETPLAY%", "");
@@ -411,8 +434,17 @@ void FileData::launchGame(Window* window, LaunchGameOptions options)
 		LOG(LogWarning) << "...launch terminated with nonzero exit code " << exitCode << "!";
 
 	Scripting::fireEvent("game-end");
+	
+	if (!hideWindow && Settings::getInstance()->getBool("HideWindowFullReinit"))
+	{
+		ResourceManager::getInstance()->reloadAll();
+		window->deinit();
+		window->init();
+		window->setCustomSplashScreen(gameToUpdate->getImagePath(), gameToUpdate->getName());
+	}
+	else
+		window->init(hideWindow);
 
-	window->init(hideWindow);
 	VolumeControl::getInstance()->init();
 
 	// mSystem can be NULL
@@ -438,6 +470,10 @@ void FileData::launchGame(Window* window, LaunchGameOptions options)
 		gameToUpdate->setMetadata("lastplayed", Utils::Time::DateTime(Utils::Time::now()));
 		CollectionSystemManager::get()->refreshCollectionSystems(gameToUpdate);
 		saveToGamelistRecovery(gameToUpdate);
+	} else {
+		// show error message
+		LOG(LogWarning) << "...Show Error message! exit code " << exitCode << "!";
+		ApiSystem::getInstance()->launchErrorWindow(window);
 	}
 
 	window->reactivateGui();
@@ -446,6 +482,19 @@ void FileData::launchGame(Window* window, LaunchGameOptions options)
 		AudioManager::getInstance()->changePlaylist(system->getTheme(), true);
 	else
 		AudioManager::getInstance()->playRandomMusic();
+}
+
+void FileData::deleteGameFiles()
+{
+	for (auto mdd : mMetadata.getMDD())
+	{
+		if (mMetadata.getType(mdd.id) != MetaDataType::MD_PATH)
+			continue;
+
+		Utils::FileSystem::removeFile(mMetadata.get(mdd.id));
+	}
+
+	Utils::FileSystem::removeFile(getPath());
 }
 
 CollectionFileData::CollectionFileData(FileData* file, SystemData* system)
@@ -479,7 +528,8 @@ CollectionFileData::~CollectionFileData()
 	mParent = NULL;
 }
 
-std::string CollectionFileData::getKey() {
+std::string CollectionFileData::getKey() 
+{
 	return getFullPath();
 }
 
@@ -490,22 +540,25 @@ FileData* CollectionFileData::getSourceFileData()
 
 void CollectionFileData::refreshMetadata()
 {
-	// metadata = mSourceFileData->metadata;
 	mDirty = true;
 }
 
 const std::string CollectionFileData::getName()
 {
-	if (mDirty) {
-		mCollectionFileName = Utils::String::removeParenthesis(mSourceFileData->getMetadata(MetaDataId::Name));
-		mCollectionFileName += " [" + Utils::String::toUpper(mSourceFileData->getSystem()->getName()) + "]";
+	if (mDirty)
+	{
+		mCollectionFileName = mSourceFileData->getMetadata(MetaDataId::Name); // Utils::String::removeParenthesis()
+
+		if (collectionShowSystemInfo == nullptr)
+			collectionShowSystemInfo = std::make_shared<bool>(Settings::getInstance()->getBool("CollectionShowSystemInfo"));
+
+		if (*collectionShowSystemInfo)
+			mCollectionFileName += " [" + mSourceFileData->getSystemName() + "]";
+
 		mDirty = false;
 	}
 
-	if (Settings::getInstance()->getBool("CollectionShowSystemInfo"))
-		return mCollectionFileName;
-		
-	return Utils::String::removeParenthesis(mSourceFileData->getMetadata(MetaDataId::Name));
+	return mCollectionFileName;
 }
 
 const std::vector<FileData*> FolderData::getChildrenListToDisplay() 
@@ -678,7 +731,9 @@ std::vector<FileData*> FolderData::getFilesRecursive(unsigned int typeMask, bool
 
 void FolderData::addChild(FileData* file, bool assignParent)
 {
+#if DEBUG
 	assert(file->getParent() == nullptr || !assignParent);
+#endif
 
 	mChildren.push_back(file);
 
@@ -688,8 +743,10 @@ void FolderData::addChild(FileData* file, bool assignParent)
 
 void FolderData::removeChild(FileData* file)
 {
+#if DEBUG
 	assert(mType == FOLDER);
 	assert(file->getParent() == this);
+#endif
 
 	for (auto it = mChildren.cbegin(); it != mChildren.cend(); it++)
 	{
@@ -702,8 +759,9 @@ void FolderData::removeChild(FileData* file)
 	}
 
 	// File somehow wasn't in our children.
+#if DEBUG
 	assert(false);
-
+#endif
 }
 
 FileData* FolderData::FindByPath(const std::string& path)
@@ -744,7 +802,11 @@ const std::string FileData::getCore(bool resolveDefault)
 #if WIN32 && !_DEBUG
 	std::string core = getMetadata(MetaDataId::Core);
 #else
-	std::string core = SystemConf::getInstance()->get(getConfigurationName() + ".core");	
+#ifndef _ENABLEEMUELEC	
+	std::string core = SystemConf::getInstance()->get(getConfigurationName() + ".core"); 
+#else
+	std::string core = getShOutput(R"(/emuelec/scripts/emuelec-utils setemu get ')" + getConfigurationName() + ".core'");
+#endif
 #endif
 
 	if (core == "auto")
@@ -754,7 +816,9 @@ const std::string FileData::getCore(bool resolveDefault)
 	{
 		// Check core exists 
 		std::string emulator = getEmulator();
-		if (!emulator.empty())
+		if (emulator.empty())
+			core = "";
+		else
 		{
 			bool exists = false;
 
@@ -792,7 +856,11 @@ const std::string FileData::getEmulator(bool resolveDefault)
 #if WIN32 && !_DEBUG
 	std::string emulator = getMetadata(MetaDataId::Emulator);
 #else
+#ifndef _ENABLEEMUELEC	
 	std::string emulator = SystemConf::getInstance()->get(getConfigurationName() + ".emulator");
+#else
+	std::string emulator = getShOutput(R"(/emuelec/scripts/emuelec-utils setemu get ')" + getConfigurationName() + ".emulator'");
+#endif
 #endif
 
 	if (emulator == "auto")
@@ -821,10 +889,12 @@ void FileData::setCore(const std::string value)
 #if WIN32 && !_DEBUG
 	setMetadata("core", value == "auto" ? "" : value);
 #else
+#ifndef _ENABLEEMUELEC	
 	SystemConf::getInstance()->set(getConfigurationName() + ".core", value);
+#else
+	getShOutput(R"(/emuelec/scripts/emuelec-utils setemu set ')" + getConfigurationName() + ".core' " + value);
 #endif
-
-	SystemConf::getInstance()->set(getConfigurationName() + ".core", value);
+#endif
 }
 
 void FileData::setEmulator(const std::string value)
@@ -832,7 +902,11 @@ void FileData::setEmulator(const std::string value)
 #if WIN32 && !_DEBUG
 	setMetadata("emulator", value == "auto" ? "" : value);
 #else
+#ifndef _ENABLEEMUELEC
 	SystemConf::getInstance()->set(getConfigurationName() + ".emulator", value);
+#else
+	getShOutput(R"(/emuelec/scripts/emuelec-utils setemu set ')" + getConfigurationName() + ".emulator' " + value);
+#endif
 #endif
 }
 

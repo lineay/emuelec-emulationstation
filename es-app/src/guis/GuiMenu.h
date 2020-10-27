@@ -42,7 +42,7 @@ public:
 	bool input(InputConfig* config, Input input) override;
 	void onSizeChanged() override;
 	std::vector<HelpPrompt> getHelpPrompts() override;	
-	static void openQuitMenu_batocera_static(Window *window, bool forceWin32Menu=false); // batocera
+	static void openQuitMenu_batocera_static(Window *window, bool quickAccessMenu = false); // batocera
 
 	static void popSystemConfigurationGui(Window* mWindow, SystemData *systemData);
 	static void popGameConfigurationGui(Window* mWindow, FileData* fileData);
@@ -57,13 +57,14 @@ private:
 	void openCollectionSystemSettings();
 	void openConfigInput();	
 	void openScraperSettings();
-	void openScreensaverOptions();
-	void openSlideshowScreensaverOptions();
-	void openVideoScreensaverOptions();
+	void openScreensaverOptions();	
 	void openSoundSettings();
 	void openUISettings();
 	void openUpdatesSettings();
 
+#ifdef _ENABLEEMUELEC
+	void openEmuELECSettings(); /* < emuelec */
+#endif
 	// batocera	
 	void openSystemSettings_batocera();
 	void openGamesSettings_batocera();
@@ -99,6 +100,11 @@ private:
 	std::vector<StrInputConfig*> mLoadedInput; // used to keep information about loaded devices in case there are unpluged between device window load and save
 	void clearLoadedInput();
 	static void createDecorationItemTemplate(Window* window, std::vector<DecorationSetInfo> sets, std::string data, ComponentListRow& row);
+
+	bool checkNetwork();
+
+	static void saveSubsetSettings();
+	static void loadSubsetSettings(const std::string themeName);
 
 public:
 	static std::vector<DecorationSetInfo> getDecorationsSets(SystemData* system = nullptr);

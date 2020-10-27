@@ -38,6 +38,52 @@ struct RetroAchievementInfo
 	std::vector<RetroAchievementGame> games;
 };
 
+struct BatoceraBezel
+{
+	std::string name;
+	std::string url;
+	std::string folderPath;
+	bool isInstalled;
+};
+
+struct BatoceraTheme
+{
+	std::string name;
+	std::string url;
+	bool isInstalled;
+};
+
+struct PacmanPackage
+{
+	PacmanPackage()
+	{
+		download_size = 0;
+		installed_size = 0;
+	}
+
+	std::string name;
+	std::string repository;
+	std::string available_version;
+	std::string description;
+	std::string url;
+
+	std::string packager;
+	std::string status;
+
+	size_t download_size;
+	size_t installed_size;
+
+	std::string group;
+	//std::vector<std::string> groups;
+	std::vector<std::string> licenses;	
+
+	bool isInstalled()
+	{
+		return status == "installed";
+	}
+};
+
+
 class ApiSystem 
 {
 public:
@@ -55,7 +101,8 @@ public:
 		SHADERS = 9,
 		DISKFORMAT = 10,
 		OVERCLOCK = 11,
-		PDFEXTRACTION = 12
+		PDFEXTRACTION = 12,
+		BATOCERASTORE = 13
 	};
 
 	virtual bool isScriptingSupported(ScriptId script);
@@ -96,6 +143,7 @@ public:
 
     virtual bool launchKodi(Window *window);
     bool launchFileManager(Window *window);
+    bool launchErrorWindow(Window *window);
 
     bool enableWifi(std::string ssid, std::string key);
     bool disableWifi();
@@ -136,17 +184,23 @@ public:
 	RetroAchievementInfo getRetroAchievements();
 
 	// Themes
-	virtual std::vector<std::string> getBatoceraThemesList();
+	virtual std::vector<BatoceraTheme> getBatoceraThemesList();
 	virtual std::pair<std::string,int> installBatoceraTheme(std::string thname, const std::function<void(const std::string)>& func = nullptr);
+	virtual std::pair<std::string, int> uninstallBatoceraBezel(std::string bezelsystem, const std::function<void(const std::string)>& func = nullptr);
 
-    virtual std::vector<std::string> getBatoceraBezelsList();
+    virtual std::vector<BatoceraBezel> getBatoceraBezelsList();
 	virtual std::pair<std::string,int> installBatoceraBezel(std::string bezelsystem, const std::function<void(const std::string)>& func = nullptr);
-	virtual std::pair<std::string,int> uninstallBatoceraBezel(BusyComponent* ui, std::string bezelsystem);
+	virtual std::pair<std::string,int> uninstallBatoceraTheme(std::string bezelsystem, const std::function<void(const std::string)>& func = nullptr);
 
 	virtual std::string getCRC32(const std::string fileName, bool fromZipContents = true);
 
 	virtual int getPdfPageCount(const std::string fileName);
 	virtual std::vector<std::string> extractPdfImages(const std::string fileName, int pageIndex = -1, int pageCount = 1);
+
+	std::vector<PacmanPackage> getBatoceraStorePackages();
+	std::pair<std::string, int> installBatoceraStorePackage(std::string name, const std::function<void(const std::string)>& func = nullptr);
+	std::pair<std::string, int> uninstallBatoceraStorePackage(std::string name, const std::function<void(const std::string)>& func = nullptr);
+	void updateBatoceraStorePackageList();
 
 	bool	getBrighness(int& value);
 	void	setBrighness(int value);
@@ -159,6 +213,8 @@ public:
 	std::vector<std::string> getFormatDiskList();
 	std::vector<std::string> getFormatFileSystems();
 	int formatDisk(const std::string disk, const std::string format, const std::function<void(const std::string)>& func = nullptr);
+
+	virtual std::vector<std::string> getShaderList();
 
 protected:
 	ApiSystem();

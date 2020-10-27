@@ -20,6 +20,7 @@
 #include "guis/GuiMenu.h"
 #include "ApiSystem.h"
 #include "guis/GuiImageViewer.h"
+#include "views/SystemView.h"
 
 std::vector<std::string> GuiGamelistOptions::gridSizes {
 	"automatic", "1x1",
@@ -37,6 +38,8 @@ GuiGamelistOptions::GuiGamelistOptions(Window* window, SystemData* system, bool 
 	mGridSize = nullptr;
 
 	addChild(&mMenu);
+
+	mMenu.addButton(_("BACK"), _("go back"), [this] { delete this; });
 
 	// check it's not a placeholder folder - if it is, only show "Filter Options"
 	FileData* file = getGamelist()->getCursor();
@@ -391,12 +394,15 @@ GuiGamelistOptions::~GuiGamelistOptions()
 	else if (mFiltersChanged || viewModeChanged)
 	{
 		if (viewModeChanged)
+		{
 			mSystem->loadTheme();
+			ViewController::get()->reloadSystemListViewTheme(mSystem);
+		}
 
 		if (!viewModeChanged && mSystem->isCollection())
 			CollectionSystemManager::get()->reloadCollection(getCustomCollectionName());
 		else
-			ViewController::get()->reloadGameListView(mSystem, false);
+			ViewController::get()->reloadGameListView(mSystem);
 	}
 }
 
@@ -463,8 +469,18 @@ void GuiGamelistOptions::openMetaDataEd()
 	{
 		deleteBtnFunc = [this, file, system]
 		{
+			auto pThis = this;
+
 			CollectionSystemManager::get()->deleteCollectionFiles(file);
-			ViewController::get()->getGameListView(system).get()->remove(file, true);
+			file->deleteGameFiles();
+
+			auto view = ViewController::get()->getGameListView(system, false);
+			if (view != nullptr)
+				view.get()->remove(file);
+			else
+				delete file;
+
+			delete pThis;
 		};
 	}
 

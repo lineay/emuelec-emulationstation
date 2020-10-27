@@ -98,9 +98,10 @@ void SystemData::populateFolder(FolderData* folder, std::unordered_map<std::stri
 		LOG(LogWarning) << "Error - folder with path \"" << folderPath << "\" is not a directory!";
 		return;
 	}
-
-	//make sure that this isn't a symlink to a thing we already have
-	if(Utils::FileSystem::isSymlink(folderPath))
+	/*
+	// [Obsolete] make sure that this isn't a symlink to a thing we already have
+	// Deactivated because it's slow & useless : users should to be carefull not to make recursive simlinks
+	if (Utils::FileSystem::isSymlink(folderPath))
 	{
 		//if this symlink resolves to somewhere that's at the beginning of our path, it's gonna recurse
 		if(folderPath.find(Utils::FileSystem::getCanonicalPath(folderPath)) == 0)
@@ -109,7 +110,7 @@ void SystemData::populateFolder(FolderData* folder, std::unordered_map<std::stri
 			return;
 		}
 	}
-
+	*/
 	std::string filePath;
 	std::string extension;
 	bool isGame;
@@ -152,11 +153,21 @@ void SystemData::populateFolder(FolderData* folder, std::unordered_map<std::stri
 		//add directories that also do not match an extension as folders
 		if(!isGame && fileInfo.directory)
 		{
-			// Don't loose time looking in downloaded_images, downloaded_videos & media folders
-			if (filePath.rfind("downloaded_") != std::string::npos || 
+// Don't loose time looking in downloaded_images, downloaded_videos & media folders
+			if (filePath.rfind("downloaded_") != std::string::npos ||
 				filePath.rfind("media") != std::string::npos || 
-				filePath.rfind("images") != std::string::npos ||
+				filePath.rfind("images") != std::string::npos || 
+#ifdef _ENABLEEMUELEC
+				filePath.rfind("boxart") != std::string::npos ||
+				filePath.rfind("cartart") != std::string::npos ||
+				filePath.rfind("snap") != std::string::npos ||
+				filePath.rfind("flyer") != std::string::npos ||
+				filePath.rfind("marquee") != std::string::npos ||
+				filePath.rfind("bios") != std::string::npos ||
+				filePath.rfind("wheel") != std::string::npos ||
+#endif
 				filePath.rfind("videos") != std::string::npos)
+
 				continue;
 
 			FolderData* newFolder = new FolderData(filePath, this);
@@ -370,6 +381,7 @@ EmulatorFeatures::Features EmulatorFeatures::parseFeatures(const std::string fea
 		if (trim == "internal_resolution") ret = ret | EmulatorFeatures::Features::internal_resolution;
 		if (trim == "videomode") ret = ret | EmulatorFeatures::Features::videomode;
 		if (trim == "colorization") ret = ret | EmulatorFeatures::Features::colorization;		
+		if (trim == "vertical") ret = ret | EmulatorFeatures::Features::vertical;		
 	}
 
 	return ret;
@@ -969,8 +981,8 @@ SystemData* SystemData::loadSystem(pugi::xml_node system)
 				{
 					CoreData core;
 					core.name = coreNode.text().as_string();
-					core.netplay = coreNode.attribute("netplay") && coreNode.attribute("netplay").value() == "true";
-					core.isDefault = coreNode.attribute("default") && coreNode.attribute("default").value() == "true";
+					core.netplay = coreNode.attribute("netplay") && strcmp(coreNode.attribute("netplay").value(), "true") == 0;
+					core.isDefault = coreNode.attribute("default") && strcmp(coreNode.attribute("default").value(), "true") == 0;
 					core.features = EmulatorFeatures::Features::all;
 					core.customCommandLine = coreNode.attribute("command").value();
 
@@ -1092,9 +1104,21 @@ void SystemData::deleteSystems()
 
 std::string SystemData::getConfigPath(bool forWrite)
 {
-	std::string path = Utils::FileSystem::getEsConfigPath() + "/es_systems.cfg"; // batocera
-	if(forWrite || Utils::FileSystem::exists(path))
-		return path;
+#if WIN32
+	std::string customPath = Utils::FileSystem::getSharedConfigPath() + "/es_systems_custom.cfg"; // /usr/share/emulationstation/es_systems.cfg
+	if (Utils::FileSystem::exists(customPath))
+		return customPath;
+#endif
+
+	std::string userdataPath = Utils::FileSystem::getEsConfigPath() + "/es_systems.cfg"; // /userdata/system/configs/emulationstation/es_systems.cfg
+	if(forWrite || Utils::FileSystem::exists(userdataPath))
+		return userdataPath;
+
+#if !WIN32
+	std::string customPath = Utils::FileSystem::getSharedConfigPath() + "/es_systems.cfg"; // /usr/share/emulationstation/es_systems.cfg
+	if (Utils::FileSystem::exists(customPath))
+		return customPath;
+#endif
 
 	return "/etc/emulationstation/es_systems.cfg";
 }
@@ -1162,7 +1186,11 @@ std::string SystemData::getGamelistPath(bool forWrite) const
 	if(forWrite || Utils::FileSystem::exists(filePath))
 		return filePath;
 
+#ifdef _ENABLEEMUELEC	
+	return "/storage/.emulationstation/gamelists/" + mMetadata.name + "/gamelist.xml";
+#else
 	return "/etc/emulationstation/gamelists/" + mMetadata.name + "/gamelist.xml";
+#endif
 }
 
 std::string SystemData::getThemePath() const
@@ -1275,8 +1303,24 @@ void SystemData::loadTheme()
 		std::map<std::string, std::string> sysData;
 		sysData.insert(std::pair<std::string, std::string>("system.name", getName()));
 		sysData.insert(std::pair<std::string, std::string>("system.theme", getThemeFolder()));
-		sysData.insert(std::pair<std::string, std::string>("system.fullName", getFullName()));
-		
+		sysData.insert(std::pair<std::string, std::string>("system.fullName", Utils::String::proper(getFullName())));
+
+		sysData.insert(std::pair<std::string, std::string>("system.manufacturer", getSystemMetadata().manufacturer));
+		sysData.insert(std::pair<std::string, std::string>("system.hardwareType", Utils::String::proper(getSystemMetadata().hardwareType)));
+
+		if (Settings::getInstance()->getString("SortSystems") == "hardware")
+			sysData.insert(std::pair<std::string, std::string>("system.sortedBy", Utils::String::proper(getSystemMetadata().hardwareType)));
+		else
+			sysData.insert(std::pair<std::string, std::string>("system.sortedBy", getSystemMetadata().manufacturer));
+
+		if (getSystemMetadata().releaseYear > 0)
+		{
+			sysData.insert(std::pair<std::string, std::string>("system.releaseYearOrNull", std::to_string(getSystemMetadata().releaseYear)));
+			sysData.insert(std::pair<std::string, std::string>("system.releaseYear", std::to_string(getSystemMetadata().releaseYear)));
+		}
+		else
+			sysData.insert(std::pair<std::string, std::string>("system.releaseYear", _("Unknown")));
+
 		mTheme->loadFile(getThemeFolder(), sysData, path);
 	} catch(ThemeException& e)
 	{
@@ -1392,7 +1436,11 @@ std::string SystemData::getDefaultEmulator()
 #if WIN32 && !_DEBUG
 	std::string emulator = Settings::getInstance()->getString(getName() + ".emulator");
 #else
+#ifndef _ENABLEEMUELEC
 	std::string emulator = SystemConf::getInstance()->get(getName() + ".emulator");
+#else
+	std::string emulator = getShOutput(R"(emuelec-utils setemu get ')" + getName() + ".emulator' ");
+#endif
 #endif
 
 	for (auto emul : mEmulators)
@@ -1420,7 +1468,11 @@ std::string SystemData::getDefaultCore(const std::string emulatorName)
 #if WIN32 && !_DEBUG
 	std::string core = Settings::getInstance()->getString(getName() + ".core");
 #else
+#ifndef _ENABLEEMUELEC
 	std::string core = SystemConf::getInstance()->get(getName() + ".core");
+#else
+	std::string core = getShOutput(R"(emuelec-utils setemu get ')" + getName() + ".core' ");
+#endif
 #endif
 
 	if (!core.empty() && core != "auto")

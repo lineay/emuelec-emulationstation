@@ -12,6 +12,7 @@
 #include <comutil.h> // #include for _bstr_t
 #include <thread>
 #include <direct.h>
+#include <algorithm>
 #include "LocaleES.h"
 
 #pragma comment(lib, "shell32.lib")
@@ -98,6 +99,9 @@ bool Win32ApiSystem::isScriptingSupported(ScriptId script)
 		executables.push_back("pdftoppm");
 		executables.push_back("pdfinfo");		
 		break;
+	case ApiSystem::BATOCERASTORE:
+		executables.push_back("batocera-store");
+		break;
 	}
 
 	if (executables.size() == 0)
@@ -117,16 +121,18 @@ bool Win32ApiSystem::isScriptingSupported(ScriptId script)
 	return true;
 }
 
-bool executeCMD(LPSTR lpCommandLine, std::string& output)
+int executeCMD(LPSTR lpCommandLine, std::string& output)
 {
-	bool ret = false;
+	int ret = -1;
 	output = "";
+
+#define BUFSIZE		32768
 
 	STARTUPINFO si;
 	SECURITY_ATTRIBUTES sa;
 	PROCESS_INFORMATION pi;
 	HANDLE g_hChildStd_IN_Rd, g_hChildStd_OUT_Wr, g_hChildStd_OUT_Rd, g_hChildStd_IN_Wr;  //pipe handles
-	char buf[1024];           //i/o buffer
+	char buf[BUFSIZE];           //i/o buffer
 
 	sa.nLength = sizeof(SECURITY_ATTRIBUTES);
 	sa.bInheritHandle = TRUE;
@@ -158,12 +164,12 @@ bool executeCMD(LPSTR lpCommandLine, std::string& output)
 
 				for (;;)
 				{
-					if (!PeekNamedPipe(g_hChildStd_OUT_Rd, buf, 1023, &bread, &avail, NULL))
+					if (!PeekNamedPipe(g_hChildStd_OUT_Rd, buf, BUFSIZE-1, &bread, &avail, NULL))
 						break;
 
 					if (bread > 0)
 					{
-						if (!ReadFile(g_hChildStd_OUT_Rd, buf, 1023, &bread, NULL))
+						if (!ReadFile(g_hChildStd_OUT_Rd, buf, BUFSIZE - 1, &bread, NULL))
 							break;
 
 						buf[bread] = 0;
@@ -172,7 +178,7 @@ bool executeCMD(LPSTR lpCommandLine, std::string& output)
 
 					if (WaitForSingleObject(pi.hProcess, 10) == WAIT_OBJECT_0)
 					{
-						if (!PeekNamedPipe(g_hChildStd_OUT_Rd, buf, 1023, &bread, &avail, NULL))
+						if (!PeekNamedPipe(g_hChildStd_OUT_Rd, buf, BUFSIZE - 1, &bread, &avail, NULL))
 							break;
 
 						if (bread == 0)
@@ -182,9 +188,9 @@ bool executeCMD(LPSTR lpCommandLine, std::string& output)
 
 				DWORD exit_code = 0;
 				if (GetExitCodeProcess(pi.hProcess, &exit_code))
-					ret = (exit_code == 0);
+					ret = exit_code;
 				else
-					ret = true;
+					ret = 0;
 
 				//clean up all handles
 				CloseHandle(pi.hThread);
@@ -201,14 +207,14 @@ bool executeCMD(LPSTR lpCommandLine, std::string& output)
 				CloseHandle(g_hChildStd_OUT_Wr);
 				CloseHandle(g_hChildStd_OUT_Rd);
 				CloseHandle(g_hChildStd_IN_Wr);
-				ret = false;
+				ret = -1;
 			}
 		}
 		else
 		{
 			CloseHandle(g_hChildStd_IN_Rd);
 			CloseHandle(g_hChildStd_IN_Wr);
-			ret = false;
+			ret = -1;
 		}
 	}
 
@@ -343,7 +349,31 @@ bool Win32ApiSystem::executeScript(const std::string command)
 	LOG(LogInfo) << "Running " << command;
 
 	std::string output;
-	return executeCMD((char*)command.c_str(), output);
+	return executeCMD((char*)command.c_str(), output) == 0;
+}
+
+std::pair<std::string, int> Win32ApiSystem::executeScript(const std::string command, const std::function<void(const std::string)>& func)
+{
+	std::string executable;
+	std::string parameters;
+	Utils::FileSystem::splitCommand(command, &executable, &parameters);
+
+	std::string path = Utils::FileSystem::getExePath() + "/" + executable + ".exe";
+	if (!Utils::FileSystem::exists(path))
+		path = Utils::FileSystem::getEsConfigPath() + "/" + executable + ".exe";
+	if (!Utils::FileSystem::exists(path))
+		path = Utils::FileSystem::getParent(Utils::FileSystem::getEsConfigPath()) + "/" + executable + ".exe";
+
+	if (Utils::FileSystem::exists(path))
+	{
+		std::string cmd = parameters.empty() ? path : path + " " + parameters;
+
+		std::string output;
+		auto ret = executeCMD((char*)cmd.c_str(), output);
+		return std::pair<std::string, int>(output, ret);
+	}
+
+	return std::pair<std::string, int>("", -1);
 }
 
 std::vector<std::string> Win32ApiSystem::executeEnumerationScript(const std::string command)
@@ -367,7 +397,7 @@ std::vector<std::string> Win32ApiSystem::executeEnumerationScript(const std::str
 		std::string cmd = parameters.empty() ? path : path + " " + parameters;
 
 		std::string output;
-		if (executeCMD((char*)cmd.c_str(), output))
+		if (executeCMD((char*)cmd.c_str(), output) == 0)
 		{
 			for (std::string all : Utils::String::splitAny(output, "\r\n"))
 				res.push_back(all);
@@ -407,7 +437,7 @@ std::string Win32ApiSystem::getCRC32(std::string fileName, bool fromZipContents)
 	}
 
 	std::string output;
-	if (executeCMD((char*)cmd.c_str(), output))
+	if (executeCMD((char*)cmd.c_str(), output) == 0)
 	{
 		for (std::string all : Utils::String::splitAny(output, "\r\n"))
 		{
@@ -473,47 +503,68 @@ std::pair<std::string, int> Win32ApiSystem::installBatoceraTheme(std::string thn
 {
 	for (auto theme : getBatoceraThemesList())
 	{
-		auto parts = Utils::String::splitAny(theme, " \t");
-		if (parts.size() < 2)
+		if (theme.name != thname)
 			continue;
+		
+		std::string themeFileName = Utils::FileSystem::getFileName(theme.url);
+		std::string zipFile = Utils::FileSystem::getEsConfigPath() + "/themes/" + themeFileName + ".zip";
+		zipFile = Utils::String::replace(zipFile, "/", "\\");
 
-		if (parts[1] == thname)
+		Utils::FileSystem::removeFile(zipFile);
+
+		if (downloadGitRepository(theme.url, zipFile, thname, func))
 		{
-			std::string themeUrl = parts.size() < 3 ? "" : (parts[2] == "-" ? parts[3] : parts[2]);
+			if (func != nullptr)
+				func(_("Extracting") + " " + thname);
 
-			std::string themeFileName = Utils::FileSystem::getFileName(themeUrl);
-			std::string zipFile = Utils::FileSystem::getEsConfigPath() + "/themes/" + themeFileName + ".zip";
-			zipFile = Utils::String::replace(zipFile, "/", "\\");
+			unzipFile(zipFile, Utils::String::replace(Utils::FileSystem::getEsConfigPath() + "/themes", "/", "\\"));
 
-			if (downloadGitRepository(themeUrl, zipFile, thname, func))
-			{
-				if (func != nullptr)
-					func(_("Extracting") + " " + thname);
+			std::string folderName = Utils::FileSystem::getEsConfigPath() + "/themes/" + themeFileName + "-master";
+			std::string finalfolderName = Utils::String::replace(folderName, "-master", "");
 
-				unzipFile(zipFile, Utils::String::replace(Utils::FileSystem::getEsConfigPath() + "/themes", "/", "\\"));
+			rename(folderName.c_str(), finalfolderName.c_str());
 
-				std::string folderName = Utils::FileSystem::getEsConfigPath() + "/themes/" + themeFileName + "-master";
-				std::string finalfolderName = Utils::String::replace(folderName, "-master", "");
+			Utils::FileSystem::removeFile(zipFile);
 
-				rename(folderName.c_str(), finalfolderName.c_str());
-
-				Utils::FileSystem::removeFile(zipFile);
-
-				return std::pair<std::string, int>(std::string("OK"), 0);
-			}
-
-			break;
+			return std::pair<std::string, int>(std::string("OK"), 0);
 		}
 	}
 
 	return std::pair<std::string, int>(std::string(""), 1);
 }
 
-std::vector<std::string> Win32ApiSystem::getBatoceraThemesList()
+std::pair<std::string, int> Win32ApiSystem::uninstallBatoceraTheme(std::string thname, const std::function<void(const std::string)>& func)
+{
+	for (auto theme : getBatoceraThemesList())
+	{
+		if (!theme.isInstalled || theme.name != thname)
+			continue;
+		
+		std::string themeFileName = Utils::FileSystem::getFileName(theme.url);
+		std::string folderName = Utils::FileSystem::getEsConfigPath() + "/themes/" + themeFileName + "-master";
+			
+		if (!Utils::FileSystem::exists(folderName))
+			folderName = Utils::String::replace(folderName, "-master", "");
+
+		if (Utils::FileSystem::exists(folderName))
+		{
+			Utils::FileSystem::deleteDirectoryFiles(folderName);
+			rmdir(folderName.c_str());
+
+			return std::pair<std::string, int>("OK", 0);
+		}
+
+		break;
+	}
+
+	return std::pair<std::string, int>(std::string(""), 1);
+}
+
+std::vector<BatoceraTheme> Win32ApiSystem::getBatoceraThemesList()
 {
 	LOG(LogDebug) << "Win32ApiSystem::getBatoceraThemesList";
 
-	std::vector<std::string> res;
+	std::vector<BatoceraTheme> res;
 
 	HttpReq httpreq("https://batocera.org/upgrades/themes.txt");
 	if (httpreq.wait())
@@ -554,10 +605,15 @@ std::vector<std::string> Win32ApiSystem::getBatoceraThemesList()
 					}
 				}
 
-				if (themeExists)
-					res.push_back("[I]\t" + line);
-				else
-					res.push_back("[A]\t" + line);
+				auto parts = Utils::String::splitAny(line, " \t");
+				if (parts.size() < 2)
+					continue;
+
+				BatoceraTheme bt;
+				bt.isInstalled = themeExists;
+				bt.name = themeName;
+				bt.url = parts[1];
+				res.push_back(bt);
 			}
 		}
 	}
@@ -611,11 +667,11 @@ std::vector<std::string> Win32ApiSystem::getAvailableStorageDevices()
 	return res;
 }
 
-std::vector<std::string> Win32ApiSystem::getBatoceraBezelsList()
+std::vector<BatoceraBezel> Win32ApiSystem::getBatoceraBezelsList()
 {
 	LOG(LogDebug) << "ApiSystem::getBatoceraBezelsList";
 
-	std::vector<std::string> res;
+	std::vector<BatoceraBezel> res;
 
 	HttpReq request("https://batocera.org/upgrades/bezels.txt");
 	if (request.wait())
@@ -627,11 +683,16 @@ std::vector<std::string> Win32ApiSystem::getBatoceraBezelsList()
 			if (parts.size() < 2)
 				continue;
 
+			BatoceraBezel bz;
+			bz.name = parts[0];
+			bz.url = parts[1];
+			bz.folderPath = parts.size() < 3 ? "" : parts[2];
+
 			std::string theBezelProject = getEmulatorLauncherPath("decorations") + "/thebezelproject/games/" + parts[0];
-			if (Utils::FileSystem::exists(theBezelProject))
-				res.push_back("[I]\t" + line);
-			else
-				res.push_back("[A]\t" + line);
+			bz.isInstalled = Utils::FileSystem::exists(theBezelProject);
+
+			if (bz.name != "?")
+				res.push_back(bz);
 		}
 	}
 
@@ -643,15 +704,11 @@ std::pair<std::string, int> Win32ApiSystem::installBatoceraBezel(std::string bez
 	LOG(LogDebug) << "ApiSystem::installBatoceraBezel";
 
 	for (auto bezel : getBatoceraBezelsList())
-	{
-		auto parts = Utils::String::splitAny(bezel, " \t");
-		if (parts.size() < 2)
-			continue;
-
-		if (parts[1] == bezelsystem)
+	{		
+		if (bezel.name == bezelsystem)
 		{
-			std::string themeUrl = parts.size() > 1 ? parts[2] : "";
-			std::string subFolder = parts.size() > 2 ? parts[3] : "";
+			std::string themeUrl = bezel.url;
+			std::string subFolder = bezel.folderPath;
 
 			std::string themeFileName = Utils::FileSystem::getFileName(themeUrl);
 			std::string zipFile = getEmulatorLauncherPath("decorations") + "/" + themeFileName + ".zip";
@@ -701,7 +758,7 @@ std::pair<std::string, int> Win32ApiSystem::installBatoceraBezel(std::string bez
 	return std::pair<std::string, int>("", 1);
 }
 
-std::pair<std::string, int> Win32ApiSystem::uninstallBatoceraBezel(BusyComponent* ui, std::string bezelsystem)
+std::pair<std::string, int> Win32ApiSystem::uninstallBatoceraBezel(std::string bezelsystem, const std::function<void(const std::string)>& func)
 {
 	std::string theBezelProject = getEmulatorLauncherPath("decorations") + "/thebezelproject/games/" + bezelsystem;
 	Utils::FileSystem::deleteDirectoryFiles(theBezelProject);
@@ -1025,6 +1082,41 @@ std::vector<std::string> Win32ApiSystem::getVideoModes()
 		i++;
 	}
 
+	return ret;
+}
+
+
+std::vector<std::string> Win32ApiSystem::getShaderList()
+{
+	Utils::FileSystem::FileSystemCacheActivator fsc;
+
+	std::vector<std::string> ret;
+
+	std::vector<std::string> folderList;
+
+	if (Utils::FileSystem::exists(getEmulatorLauncherPath("shaders")))
+		folderList.push_back(getEmulatorLauncherPath("shaders") + "/configs");
+
+	if (Utils::FileSystem::exists(getEmulatorLauncherPath("system.shaders")))
+		folderList.push_back(getEmulatorLauncherPath("system.shaders") + "/configs");
+
+	for (auto folder : folderList)
+	{
+		for (auto file : Utils::FileSystem::getDirContent(folder, true))
+		{
+			if (Utils::FileSystem::getFileName(file) == "rendering-defaults.yml")
+			{
+				auto parent = Utils::FileSystem::getFileName(Utils::FileSystem::getParent(file));
+				if (parent == "configs")
+					continue;
+
+				if (std::find(ret.cbegin(), ret.cend(), parent) == ret.cend())
+					ret.push_back(parent);
+			}
+		}
+	}
+
+	std::sort(ret.begin(), ret.end());
 	return ret;
 }
 

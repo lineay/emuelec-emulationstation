@@ -12,7 +12,7 @@ NinePatchComponent::NinePatchComponent(Window* window, const std::string& path, 
 	mTimer = 0;
 	mAnimateTiming = 0;
 	mAnimateColor = 0xFFFFFFFF;
-
+	
 	mPreviousSize = Vector2f(0, 0);
 	setImagePath(path);
 }
@@ -28,6 +28,9 @@ void NinePatchComponent::setOpacity(unsigned char opacity)
 
 NinePatchComponent::~NinePatchComponent()
 {
+	if (mTexture != nullptr)
+		mTexture->setRequired(false);
+
 	if (mVertices != NULL)
 		delete[] mVertices;
 }
@@ -240,7 +243,15 @@ void NinePatchComponent::setImagePath(const std::string& path)
 		return;
 
 	mPath = path;
+
+	if (mTexture != nullptr)
+		mTexture->setRequired(false);
+
 	mTexture = TextureResource::get(mPath, false, true);
+
+	if (isShowing() && mTexture != nullptr)
+		mTexture->setRequired(true);
+
 	buildVertices();
 }
 
@@ -298,4 +309,59 @@ void NinePatchComponent::applyTheme(const std::shared_ptr<ThemeData>& theme, con
 
 	if (elem->has("animateColorTime"))
 		setAnimateTiming(elem->get<float>("animateColorTime"));
+}
+
+void NinePatchComponent::onShow()
+{
+	GuiComponent::onShow();
+
+	if (mTexture != nullptr)
+		mTexture->setRequired(true);	
+}
+
+void NinePatchComponent::onHide()
+{
+	GuiComponent::onHide();
+
+	if (mTexture != nullptr)
+		mTexture->setRequired(false);	
+}
+
+ThemeData::ThemeElement::Property NinePatchComponent::getProperty(const std::string name)
+{
+	Vector2f scale = getParent() ? getParent()->getSize() : Vector2f((float)Renderer::getScreenWidth(), (float)Renderer::getScreenHeight());
+
+	if (name == "color")
+		return mCenterColor;
+	else if (name == "centerColor")
+		return mCenterColor;
+	else if (name == "edgeColor")
+		return mEdgeColor;
+	else if (name == "cornerSize")
+		return mCornerSize;
+	else if (name == "animateColor")
+		return mAnimateColor;
+
+	return GuiComponent::getProperty(name);
+}
+
+void NinePatchComponent::setProperty(const std::string name, const ThemeData::ThemeElement::Property& value)
+{
+	Vector2f scale = getParent() ? getParent()->getSize() : Vector2f((float)Renderer::getScreenWidth(), (float)Renderer::getScreenHeight());
+
+	if (name == "color" && value.type == ThemeData::ThemeElement::Property::PropertyType::Int)
+	{
+		setCenterColor(value.i);
+		setEdgeColor(value.i);
+	}
+	else if (name == "centerColor" && value.type == ThemeData::ThemeElement::Property::PropertyType::Int)
+		setCenterColor(value.i);
+	else if (name == "edgeColor" && value.type == ThemeData::ThemeElement::Property::PropertyType::Int)
+		setEdgeColor(value.i);
+	else if (name == "animateColor" && value.type == ThemeData::ThemeElement::Property::PropertyType::Int)
+		setAnimateColor(value.i);
+	else if (name == "cornerSize" && value.type == ThemeData::ThemeElement::Property::PropertyType::Pair)
+		setCornerSize(value.v);
+	else
+		GuiComponent::setProperty(name, value);
 }

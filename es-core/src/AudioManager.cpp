@@ -10,6 +10,10 @@
 #include "id3v2lib/include/id3v2lib.h"
 #include "ThemeData.h"
 
+#ifdef _ENABLEEMUELEC
+#include "platform.h"
+#endif
+
 #ifdef WIN32
 #include <time.h>
 #else
@@ -51,6 +55,7 @@ void AudioManager::init()
 	if (mInitialized)
 		return;
 	
+	mMusicVolume = 0;
 	mPlayingSystemThemeSong = "none";
 
 	if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0)
@@ -92,6 +97,11 @@ void AudioManager::deinit()
 
 	Mix_HookMusicFinished(nullptr);
 	Mix_HaltMusic();
+
+#ifdef _ENABLEEMUELEC	
+	LOG(LogInfo) << "Attempting to close SDL AUDIO";
+	runSystemCommand("/emuelec/scripts/emuelec-utils audio alsa", "", nullptr); 
+#endif
 
 	//completely tear down SDL audio. else SDL hogs audio resources and emulators might fail to start...
 	Mix_CloseAudio();
@@ -179,11 +189,19 @@ void AudioManager::playRandomMusic(bool continueIfPlaying)
 
 	// check in User music directory
 	if (musics.empty())
+#ifdef _ENABLEEMUELEC
+		getMusicIn("/storage/roms/BGM", musics);
+#else
 		getMusicIn("/userdata/music", musics);
+#endif
 
 	// check in system sound directory
 	if (musics.empty())
+#ifdef _ENABLEEMUELEC
+		getMusicIn("/storage/.config/emuelec/BGM", musics);
+#else
 		getMusicIn("/usr/share/batocera/music", musics);
+#endif
 
 	// check in .emulationstation/music directory
 	if (musics.empty())
@@ -471,6 +489,18 @@ void AudioManager::setVideoPlaying(bool state)
 	sInstance->mVideoPlaying = state;
 }
 
+int AudioManager::getMaxMusicVolume()
+{
+	int ret = (Settings::getInstance()->getInt("MusicVolume") * MIX_MAX_VOLUME) / 100;
+	if (ret > MIX_MAX_VOLUME)
+		return MIX_MAX_VOLUME;
+
+	if (ret < 0)
+		return 0;
+
+	return ret;
+}
+
 void AudioManager::update(int deltaTime)
 {
 	if (sInstance == nullptr || !sInstance->mInitialized || !Settings::getInstance()->getBool("audio.bgmusic"))
@@ -478,21 +508,34 @@ void AudioManager::update(int deltaTime)
 
 	float deltaVol = deltaTime / 8.0f;
 
-	#define MINVOL 5
+//	#define MINVOL 5
 
-	if (sInstance->mVideoPlaying && sInstance->mMusicVolume > MINVOL)
+	int maxVol = getMaxMusicVolume();
+	int minVol = maxVol / 20;
+	if (maxVol > 0 && minVol == 0)
+		minVol = 1;
+
+	if (sInstance->mVideoPlaying && sInstance->mMusicVolume != minVol)
 	{		
-		sInstance->mMusicVolume -= deltaVol;
-		if (sInstance->mMusicVolume < MINVOL)
-			sInstance->mMusicVolume = MINVOL;
+		if (sInstance->mMusicVolume > minVol)
+		{
+			sInstance->mMusicVolume -= deltaVol;
+			if (sInstance->mMusicVolume < minVol)
+				sInstance->mMusicVolume = minVol;
+		}
 
-		Mix_VolumeMusic((int) sInstance->mMusicVolume);
+		Mix_VolumeMusic((int)sInstance->mMusicVolume);
 	}
-	else if (!sInstance->mVideoPlaying && sInstance->mMusicVolume < MIX_MAX_VOLUME)
+	else if (!sInstance->mVideoPlaying && sInstance->mMusicVolume != maxVol)
 	{
-		sInstance->mMusicVolume += deltaVol;
-		if (sInstance->mMusicVolume > MIX_MAX_VOLUME)
-			sInstance->mMusicVolume = MIX_MAX_VOLUME;
+		if (sInstance->mMusicVolume < maxVol)
+		{
+			sInstance->mMusicVolume += deltaVol;
+			if (sInstance->mMusicVolume > maxVol)
+				sInstance->mMusicVolume = maxVol;
+		}
+		else
+			sInstance->mMusicVolume = maxVol;
 
 		Mix_VolumeMusic((int)sInstance->mMusicVolume);
 	}

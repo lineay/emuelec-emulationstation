@@ -73,8 +73,13 @@ wifi.enabled=0
 system.hostname=BATOCERA
 global.retroachievements.*
 */
+#ifdef _ENABLEEMUELEC
+std::string systemConfFile = "/storage/.config/emuelec/configs/emuelec.conf";
+std::string systemConfFileTmp = "/storage/.config/emuelec/configs/emuelec.conf.tmp";
+#else
 std::string systemConfFile = "/userdata/system/batocera.conf";
 std::string systemConfFileTmp = "/userdata/system/batocera.conf.tmp";
+#endif
 
 SystemConf::SystemConf() 
 {
@@ -156,7 +161,7 @@ bool SystemConf::saveSystemConf()
 		filein.close();
 	}
 
-	static std::string removeID = "$^é(p$^mpv$êrpver$^vper$vper$^vper$vper$vper$^vperv^pervncvizn";
+	static std::string removeID = "$^ï¿½(p$^mpv$ï¿½rpver$^vper$vper$^vper$vper$vper$^vperv^pervncvizn";
 
 	int lastTime = SDL_GetTicks();
 

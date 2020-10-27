@@ -3,43 +3,54 @@
 #include "GuiComponent.h"
 #include "GuiThemeInstallStart.h"
 #include "components/MenuComponent.h"
+#include "ApiSystem.h"
+#include "ContentInstaller.h"
 
 template<typename T>
 class OptionListComponent;
 
+class GuiBatoceraBezelEntry : public ComponentGrid
+{
+public:
+	GuiBatoceraBezelEntry(Window* window, BatoceraBezel& entry);
+
+	bool isInstallPending() { return mIsPending; }
+	BatoceraBezel& getEntry() { return mEntry; }
+	virtual void setColor(unsigned int color);
+
+private:
+	std::shared_ptr<TextComponent>  mImage;
+	std::shared_ptr<TextComponent>  mText;
+	std::shared_ptr<TextComponent>  mSubstring;
+
+	BatoceraBezel mEntry;
+	bool mIsPending;
+};
+
+
 // Batocera
-class GuiBezelInstallStart : public GuiComponent
+class GuiBezelInstallStart : public GuiComponent, IContentInstalledNotify
 {
 public:
 	GuiBezelInstallStart(Window* window);
+	~GuiBezelInstallStart();
+
 	bool input(InputConfig* config, Input input) override;
+	void update(int deltaTime) override;
+
 	virtual std::vector<HelpPrompt> getHelpPrompts() override;
 
+	void OnContentInstalled(int contentType, std::string contentName, bool success) override;
 private:
-	void start(std::string SelectedBezel);
-	MenuComponent mMenu;
+	void processBezel(BatoceraBezel name);
+	
+	void loadBezelsAsync();
+	void loadList();
+
+	void centerWindow();
+
+	int			  mReloadList;
+	MenuComponent mMenu;	
+
+	std::vector<BatoceraBezel> mBezels;
 };
-
-class GuiBezelUninstallStart : public GuiComponent
-{
-public:
-	GuiBezelUninstallStart(Window* window);
-	bool input(InputConfig* config, Input input) override;
-	virtual std::vector<HelpPrompt> getHelpPrompts() override;
-
-private:
-	void start(char *bezel);
-	MenuComponent mMenu;
-};
-
-class GuiBezelInstallMenu : public GuiComponent
-{
-public:
-	GuiBezelInstallMenu(Window* window);
-	bool input(InputConfig* config, Input input) override;
-	virtual std::vector<HelpPrompt> getHelpPrompts() override;
-
-private:
-	MenuComponent mMenu;
-};
-

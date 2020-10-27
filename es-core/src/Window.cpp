@@ -23,11 +23,14 @@
 #include "guis/GuiMsgBox.h"
 #include "components/VolumeInfoComponent.h"
 #include "Splash.h"
+#include "PowerSaver.h"
+#ifdef _ENABLEEMUELEC
+#include "utils/FileSystemUtil.h"
+#endif
 
 Window::Window() : mNormalizeNextUpdate(false), mFrameTimeElapsed(0), mFrameCountElapsed(0), mAverageDeltaTime(10),
-  mAllowSleep(true), mSleeping(false), mTimeSinceLastInput(0), mScreenSaver(NULL), mRenderScreenSaver(false), mInfoPopup(NULL), mClockElapsed(0) // batocera
-{	
-	mTransiting = nullptr;
+  mAllowSleep(true), mSleeping(false), mTimeSinceLastInput(0), mScreenSaver(NULL), mRenderScreenSaver(false), mClockElapsed(0) // batocera
+{		
 	mTransitionOffset = 0;
 
 	mHelp = new HelpComponent(this);
@@ -50,68 +53,16 @@ Window::~Window()
 
 	delete mHelp;
 }
-/*
-#include "animations/LambdaAnimation.h"
-#include "animations/AnimationController.h"
-#include <SDL_main.h>
-#include <SDL_timer.h>
-*/
+
 void Window::pushGui(GuiComponent* gui)
 {
-	mTransiting = nullptr;
-
 	if (mGuiStack.size() > 0)
 	{
 		auto& top = mGuiStack.back();
-		top->topWindow(false);
-		/*
-		if (top->getValue() != "GuiMsgBox" && mGuiStack.size() >= 2)
-		{	
-			GuiComponent* showing = gui;
-			GuiComponent* hiding = top;
-
-			mTransiting = hiding;
-			mTransitionOffset = 0;
-
-			showing->setOpacity(0);
-			mGuiStack.push_back(showing);
-
-			int duration = 250;
-			int lastTime = SDL_GetTicks();
-			int curTime = lastTime;
-			int deltaTime = 0.00001;
-
-			AnimationController animController(new LambdaAnimation([this, showing](float t)
-			{
-				float value = Math::lerp(0.0f, 1.0f, t);
-				mTransitionOffset = Renderer::getScreenWidth() * value;
-				mTransiting->setOpacity(255 - (255 * value));
-				showing->setOpacity(255 * value);
-			}, duration));
-		
-			do
-			{
-				curTime = SDL_GetTicks();
-				deltaTime = curTime - lastTime;
-				lastTime = curTime;
-
-				this->update(deltaTime);
-				this->render();
-
-				Renderer::swapBuffers();
-			} 
-			while (!animController.update(deltaTime));
-
-			showing->setOpacity(255);
-			mTransiting->setOpacity(255);
-			mTransitionOffset = 0;
-			mTransiting = nullptr;
-
-			gui->updateHelpPrompts();
-			return;
-		}*/
+		top->topWindow(false);		
 	}
 
+	gui->onShow();
 	mGuiStack.push_back(gui);
 	gui->updateHelpPrompts();
 }
@@ -122,6 +73,7 @@ void Window::removeGui(GuiComponent* gui)
 	{
 		if(*i == gui)
 		{						
+			gui->onHide();
 			i = mGuiStack.erase(i);
 
 			if(i == mGuiStack.cend() && mGuiStack.size()) // we just popped the stack and the stack is not empty
@@ -197,8 +149,17 @@ bool Window::init(bool initRenderer)
 
 	// update our help because font sizes probably changed
 	if (peekGui())
-		peekGui()->updateHelpPrompts();
-
+#ifdef _ENABLEEMUELEC	
+		// emuelec
+      if(Utils::FileSystem::exists("/emuelec/bin/fbfix")) {
+      system("/emuelec/bin/fbfix");      
+  } else { 
+	  if(Utils::FileSystem::exists("/storage/.kodi/addons/script.emuelec.Amlogic-ng.launcher/bin/fbfix")) {
+	   system("/storage/.kodi/addons/script.emuelec.Amlogic-ng.launcher/bin/fbfix");
+	  }
+  }
+#endif
+	peekGui()->updateHelpPrompts();
 	return true;
 }
 
@@ -241,28 +202,27 @@ void Window::textInput(const char* text)
 
 void Window::input(InputConfig* config, Input input)
 {
-	if (mScreenSaver) {
+	if (mScreenSaver) 
+	{
 		if (mScreenSaver->isScreenSaverActive() && Settings::getInstance()->getBool("ScreenSaverControls") &&
 			((Settings::getInstance()->getString("ScreenSaverBehavior") == "slideshow") || 			
 			(Settings::getInstance()->getString("ScreenSaverBehavior") == "random video")))
 		{
-			if (mScreenSaver->getCurrentGame() != nullptr && (config->isMappedLike("right", input) || config->isMappedTo("start", input) || config->isMappedTo("select", input)))
+			if (config->isMappedLike("right", input) || config->isMappedTo("select", input))
 			{
-				if (config->isMappedLike("right", input) || config->isMappedTo("select", input))
-				{
-					if (input.value != 0) // handle screensaver control
-						mScreenSaver->nextVideo();
+				if (input.value != 0) // handle screensaver control
+					mScreenSaver->nextVideo();
 					
-					return;
-				}
-				else if (config->isMappedTo("start", input) && input.value != 0)
-				{
-					// launch game!
-					cancelScreenSaver();
-					mScreenSaver->launchGame();
-					// to force handling the wake up process
-					mSleeping = true;
-				}
+				mTimeSinceLastInput = 0;
+				return;
+			}
+			else if (config->isMappedTo("start", input) && input.value != 0 && mScreenSaver->getCurrentGame() != nullptr)
+			{
+				// launch game!
+				cancelScreenSaver();
+				mScreenSaver->launchGame();
+				// to force handling the wake up process
+				mSleeping = true;
 			}
 		}
 	}
@@ -328,14 +288,6 @@ void Window::displayNotificationMessage(std::string message, int duration)
 	mNotificationMessages.push_back(msg);
 }
 
-void Window::stopInfoPopup() 
-{
-	if (mInfoPopup == nullptr)
-		return;
-	
-	delete mInfoPopup; 
-	mInfoPopup = nullptr;
-}
 
 void Window::processNotificationMessages()
 {
@@ -348,11 +300,79 @@ void Window::processNotificationMessages()
 	mNotificationMessages.pop_back();
 
 	LOG(LogDebug) << "Notification message :" << msg.first.c_str();
-
-	if (mInfoPopup) 
-		delete mInfoPopup; 
 	
-	mInfoPopup = new GuiInfoPopup(this, msg.first, msg.second);
+	if (mNotificationPopups.size() == 0)
+		PowerSaver::pause();
+
+	auto infoPopup = new GuiInfoPopup(this, msg.first, msg.second);
+	mNotificationPopups.push_back(infoPopup);
+
+	layoutNotificationPopups();
+}
+
+void Window::stopNotificationPopups()
+{
+	if (mNotificationPopups.size() == 0)
+		return;
+
+	for (auto ip : mNotificationPopups)
+		delete ip;
+
+	mNotificationPopups.clear();
+	PowerSaver::resume();
+}
+
+void Window::updateNotificationPopups(int deltaTime)
+{
+	bool changed = false;
+
+	for (int i = mNotificationPopups.size() - 1 ; i >= 0 ; i--)
+	{
+		mNotificationPopups[i]->update(deltaTime);
+
+		if (!mNotificationPopups[i]->isRunning())
+		{
+			delete mNotificationPopups[i];
+
+			auto it = mNotificationPopups.begin();
+			std::advance(it, i);
+			mNotificationPopups.erase(it);
+
+			changed = true;
+		}
+		else if (mNotificationPopups[i]->getFadeOut() != 0)
+			changed = true;
+	}
+
+	if (changed)
+	{
+		if (mNotificationPopups.size() == 0)
+			PowerSaver::resume();
+		else
+			layoutNotificationPopups();
+	}
+}
+
+void Window::layoutNotificationPopups()
+{
+	float posY = Renderer::getScreenHeight() * 0.02f;
+	int paddingY = (int)posY;
+
+	for (auto popup : mNotificationPopups)
+	{
+		float fadingOut = popup->getFadeOut();
+		if (fadingOut != 0)
+		{
+			// cubic ease in
+			fadingOut = fadingOut - 1;
+			fadingOut = Math::lerp(0, 1, fadingOut*fadingOut*fadingOut + 1);
+
+			posY -= (popup->getSize().y() + paddingY) * fadingOut;
+		}
+
+		popup->setPosition(popup->getPosition().x(), posY, 0);
+		posY += popup->getSize().y() + paddingY;
+	}
 }
 
 void Window::processSongTitleNotifications()
@@ -363,6 +383,22 @@ void Window::processSongTitleNotifications()
 	std::string songName = AudioManager::getInstance()->getSongName();
 	if (!songName.empty())
 	{
+		std::unique_lock<std::mutex> lock(mNotificationMessagesLock);
+
+		for (int i = mNotificationPopups.size() - 1; i >= 0; i--)
+		{
+			if (mNotificationPopups[i]->getMessage().find(_U("\uF028")) != std::string::npos)
+			{
+				delete mNotificationPopups[i];
+
+				auto it = mNotificationPopups.begin();
+				std::advance(it, i);
+				mNotificationPopups.erase(it);
+			}
+		}
+		
+		lock.unlock();
+
 		displayNotificationMessage(_U("\uF028  ") + songName); // _("Now playing: ") + 
 		AudioManager::getInstance()->setSongName("");
 	}	
@@ -437,9 +473,6 @@ void Window::update(int deltaTime)
 
 	mTimeSinceLastInput += deltaTime;
 
-	if (mTransiting != nullptr)
-		mTransiting->update(deltaTime);
-
 	if (peekGui())
 		peekGui()->update(deltaTime);
 
@@ -453,6 +486,9 @@ void Window::update(int deltaTime)
 
 	if (mBatteryIndicator)
 		mBatteryIndicator->update(deltaTime);
+
+	updateAsyncNotifications(deltaTime);
+	updateNotificationPopups(deltaTime);
 
 	AudioManager::update(deltaTime);
 }
@@ -472,31 +508,28 @@ void Window::render()
 		bottom->render(transform);
 		if(bottom != top)
 		{
-			if (mTransiting == nullptr && (top->isKindOf<GuiMsgBox>() || top->getTag() == "popup") && mGuiStack.size() > 2)
+			if ((top->getTag() == "GuiLoading") && mGuiStack.size() > 2)
 			{
-				auto& middle = mGuiStack.at(mGuiStack.size()-2);
+				mBackgroundOverlay->render(transform);
+
+				auto& middle = mGuiStack.at(mGuiStack.size() - 2);
 				if (middle != bottom)
 					middle->render(transform);
+
+				top->render(transform);
 			}
-
-			mBackgroundOverlay->render(transform);
-
-			Transform4x4f topTransform = transform;
-
-			if (mTransiting != nullptr)
+			else
 			{
-				Vector3f target(mTransitionOffset, 0, 0);
+				if ((top->isKindOf<GuiMsgBox>() || top->getTag() == "popup") && mGuiStack.size() > 2)
+				{
+					auto& middle = mGuiStack.at(mGuiStack.size() - 2);
+					if (middle != bottom)
+						middle->render(transform);
+				}
 
-				Transform4x4f cam = Transform4x4f::Identity();
-				cam.translation() = -target;
-
-				mTransiting->render(cam);
-
-				target = Vector3f(Renderer::getScreenWidth() - mTransitionOffset, 0, 0);
-				topTransform.translation() = target;
+				mBackgroundOverlay->render(transform);
+				top->render(transform);
 			}
-
-			top->render(topTransform);
 		}
 	}
 	
@@ -523,13 +556,17 @@ void Window::render()
 	Renderer::setMatrix(Transform4x4f::Identity());
 
 	unsigned int screensaverTime = (unsigned int)Settings::getInstance()->getInt("ScreenSaverTime");
-	if(mTimeSinceLastInput >= screensaverTime && screensaverTime != 0)
+	if (mTimeSinceLastInput >= screensaverTime && screensaverTime != 0)
 		startScreenSaver();
 
-	if(!mRenderScreenSaver && mInfoPopup)
-		mInfoPopup->render(transform);
+	// Render notifications
+	if (!mRenderScreenSaver)
+	{
+		for (auto popup : mNotificationPopups)
+			popup->render(transform);
 
-	renderRegisteredNotificationComponents(transform);
+		renderAsyncNotifications(transform);
+	}
 	
 	// Always call the screensaver render function regardless of whether the screensaver is active
 	// or not because it may perform a fade on transition
@@ -742,26 +779,20 @@ void Window::renderScreenSaver()
 		mScreenSaver->renderScreenSaver();
 }
 
-void Window::registerNotificationComponent(AsyncNotificationComponent* pc)
+AsyncNotificationComponent* Window::createAsyncNotificationComponent(bool actionLine)
 {
 	std::unique_lock<std::mutex> lock(mNotificationMessagesLock);
 
-	if (std::find(mAsyncNotificationComponent.cbegin(), mAsyncNotificationComponent.cend(), pc) != mAsyncNotificationComponent.cend())
-		return;
-
+	AsyncNotificationComponent* pc = new AsyncNotificationComponent(this, actionLine);
 	mAsyncNotificationComponent.push_back(pc);
+	
+	if (mAsyncNotificationComponent.size() == 1)
+		PowerSaver::pause();
+
+	return pc;
 }
 
-void Window::unRegisterNotificationComponent(AsyncNotificationComponent* pc)
-{
-	std::unique_lock<std::mutex> lock(mNotificationMessagesLock);
-
-	auto it = std::find(mAsyncNotificationComponent.cbegin(), mAsyncNotificationComponent.cend(), pc);
-	if (it != mAsyncNotificationComponent.cend())
-		mAsyncNotificationComponent.erase(it);
-}
-
-void Window::renderRegisteredNotificationComponents(const Transform4x4f& trans)
+void Window::renderAsyncNotifications(const Transform4x4f& trans)
 {
 	std::unique_lock<std::mutex> lock(mNotificationMessagesLock);
 
@@ -769,19 +800,77 @@ void Window::renderRegisteredNotificationComponents(const Transform4x4f& trans)
 
 	float posY = Renderer::getScreenHeight() * 0.02f;
 
+	bool first = true;
 	for (auto child : mAsyncNotificationComponent)
 	{		
 		float posX = Renderer::getScreenWidth()*0.99f - child->getSize().x();
 
-		child->setPosition(posX, posY, 0);
+		float offset = child->getSize().y() + PADDING_H;
+
+		float fadingOut = child->getFading();
+		if (fadingOut != 0)
+		{
+			// cubic ease in
+			fadingOut = fadingOut - 1;
+			fadingOut = Math::lerp(0, 1, fadingOut*fadingOut*fadingOut + 1);
+						
+			if (child->isClosing())
+			{
+				child->setPosition(posX, posY - (offset * fadingOut), 0);
+				offset = offset - (offset * fadingOut);
+
+				auto sz = child->getSize();
+				Renderer::pushClipRect(Vector2i(
+					(int)trans.translation()[0] + posX - PADDING_H, 
+					(int)trans.translation()[1] + (first ? 0 : posY)), 
+					Vector2i(
+					(int)sz.x() + 2 * PADDING_H, 
+					(int)sz.y() + (first ? posY : 0)));
+			}
+			else 
+				child->setPosition(posX + (child->getSize().x() * (1.0 - fadingOut)), posY, 0);
+		}
+		else 
+			child->setPosition(posX, posY, 0);
+
 		child->render(trans);
 
-		posY += child->getSize().y() + PADDING_H;
+		if (fadingOut != 0 && child->isClosing())
+			Renderer::popClipRect();
+
+		posY += offset;
+		first = false;
 	}
 }
 
-void Window::postToUiThread(const std::function<void(Window*)>& func)
+void Window::updateAsyncNotifications(int deltaTime)
 {
+	std::unique_lock<std::mutex> lock(mNotificationMessagesLock);
+
+	bool changed = false;
+
+	for (int i = mAsyncNotificationComponent.size() - 1; i >= 0; i--)
+	{
+		mAsyncNotificationComponent[i]->update(deltaTime);
+
+		if (!mAsyncNotificationComponent[i]->isRunning())
+		{
+			delete mAsyncNotificationComponent[i];
+
+			auto it = mAsyncNotificationComponent.begin();
+			std::advance(it, i);
+			mAsyncNotificationComponent.erase(it);
+
+			changed = true;
+		}
+	}
+
+	if (changed && mAsyncNotificationComponent.size() == 0)
+		PowerSaver::resume();
+}
+
+void Window::postToUiThread(const std::function<void(Window*)>& func)
+{	
 	std::unique_lock<std::mutex> lock(mNotificationMessagesLock);
 
 	mFunctions.push_back(func);	

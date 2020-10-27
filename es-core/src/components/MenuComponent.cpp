@@ -146,7 +146,8 @@ void MenuComponent::addWithDescription(const std::string& label, const std::stri
 	else	
 		row.addElement(std::make_shared<TextComponent>(mWindow, Utils::String::toUpper(label), theme->Text.font, theme->Text.color), true);
 
-	row.addElement(comp, false, invert_when_selected);
+	if (comp != nullptr)
+		row.addElement(comp, false, invert_when_selected);
 
 	if (func != nullptr)
 		row.makeAcceptInputHandler(func);
@@ -340,8 +341,8 @@ void MenuComponent::onSizeChanged()
 	mBackground.fitTo(mSize, Vector3f::Zero(), Vector2f(-32, -32));
 
 	// update grid row/col sizes
-	mGrid.setRowHeightPerc(0, TITLE_HEIGHT / mSize.y());
-	mGrid.setRowHeightPerc(2, getButtonGridHeight() / mSize.y());
+	mGrid.setRowHeightPerc(0, TITLE_HEIGHT / mSize.y(), false);
+	mGrid.setRowHeightPerc(2, getButtonGridHeight() / mSize.y(), false);
 
 	mGrid.setSize(mSize);
 }

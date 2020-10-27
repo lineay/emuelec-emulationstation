@@ -99,6 +99,8 @@ int runSystemCommand(const std::string& cmd_utf8, const std::string& name, Windo
 	}
 
 	return 1;
+#elif _ENABLEEMUELEC
+	return system((cmd_utf8 + " 2> /storage/.config/emuelec/logs/es_launch_stderr.log > /storage/.config/emuelec/logs/es_launch_stdout.log").c_str()); // emuelec
 #else
 	return system((cmd_utf8 + " 2> /userdata/system/logs/es_launch_stderr.log | head -300 > /userdata/system/logs/es_launch_stdout.log").c_str()); // batocera
 #endif
@@ -176,3 +178,24 @@ bool isFastShutdown()
 	return quitMode == QuitMode::FAST_REBOOT || quitMode == QuitMode::FAST_SHUTDOWN;
 }
 
+
+#ifdef _ENABLEEMUELEC
+
+/* < emuelec */
+std::string getShOutput(const std::string& mStr)
+{
+    std::string result, file;
+    FILE* pipe{popen(mStr.c_str(), "r")};
+    char buffer[256];
+
+    while(fgets(buffer, sizeof(buffer), pipe) != NULL)
+    {
+        file = buffer;
+        result += file.substr(0, file.size() - 1);
+    }
+
+    pclose(pipe);
+    return result;
+}
+/* emuelec >*/
+#endif

@@ -22,6 +22,7 @@ Splash::Splash(Window* window, const std::string image, bool fullScreenBackGroun
 	auto theme = std::make_shared<ThemeData>();
 
 	std::string themeFilePath = fullScreenBackGround ? ":/splash.xml" : ":/gamesplash.xml";
+	themeFilePath = ResourceManager::getInstance()->getResourcePath(themeFilePath);
 
 	std::map<std::string, ThemeSet> themeSets = ThemeData::getThemeSets();
 	auto themeset = themeSets.find(Settings::getInstance()->getString("ThemeSet"));
@@ -81,7 +82,9 @@ Splash::Splash(Window* window, const std::string image, bool fullScreenBackGroun
 		mText.setColor(0xFFFFFFD0);
 	else
 		mText.setColor(0xFFFFFFFF);
-
+#ifdef _ENABLEEMUELEC
+		mText.setColor(0x51468700);
+#endif
 	mText.setHorizontalAlignment(ALIGN_CENTER);
 	mText.setFont(font);
 
@@ -110,8 +113,14 @@ Splash::Splash(Window* window, const std::string image, bool fullScreenBackGroun
 		mText.applyTheme(theme, "splash", "label", ThemeFlags::ALL ^ (ThemeFlags::TEXT));
 	else if (fullScreenBackGround)
 	{
-		mText.setGlowColor(0x00000020);
+		
+#ifdef _ENABLEEMUELEC
+		mText.setGlowColor(0x00000010);
+		mText.setGlowSize(1);	
+#else	
+		mText.setGlowColor(0x00000020);	
 		mText.setGlowSize(2);
+#endif
 		mText.setGlowOffset(1, 1);
 	}
 
@@ -162,6 +171,10 @@ Splash::Splash(Window* window, const std::string image, bool fullScreenBackGroun
 	{
 		mActiveProgressbar.setColorShift(0xDF1010FF);
 		mActiveProgressbar.setColorShiftEnd(0x4F0000FF);
+#ifdef _ENABLEEMUELEC
+		mActiveProgressbar.setColorShift(0xA8A2D0FF);
+		mActiveProgressbar.setColorShiftEnd(0x514687FF);
+#endif
 	}
 
 	mActiveProgressbar.setColorGradientHorizontal(true);

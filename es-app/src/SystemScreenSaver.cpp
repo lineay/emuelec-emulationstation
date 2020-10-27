@@ -72,12 +72,12 @@ void SystemScreenSaver::startScreenSaver()
 
 	stopScreenSaver();
 
+	if (!loadingNext && Settings::getInstance()->getBool("StopMusicOnScreenSaver")) //(Settings::getInstance()->getBool("VideoAudio") && !Settings::getInstance()->getBool("ScreenSaverVideoMute")))
+		AudioManager::getInstance()->deinit();
+
 	std::string screensaver_behavior = Settings::getInstance()->getString("ScreenSaverBehavior");
 	if (screensaver_behavior == "random video")
 	{
-		if (!loadingNext && (Settings::getInstance()->getBool("VideoAudio") && !Settings::getInstance()->getBool("ScreenSaverVideoMute")))
-			AudioManager::getInstance()->deinit();
-
 		mVideoChangeTime = Settings::getInstance()->getInt("ScreenSaverSwapVideoTimeout");
 
 		// Configure to fade out the windows, Skip Fading if Instant mode
@@ -93,14 +93,24 @@ void SystemScreenSaver::startScreenSaver()
 		else
 			mOpacity = 0.0f;
 			
-		// Load a random video
-		std::string path = pickRandomVideo();
-
-		int retry = 10;
-		while (retry > 0 && !Utils::FileSystem::exists(path))
+		std::string path;
+		if (Settings::getInstance()->getBool("SlideshowScreenSaverCustomVideoSource"))
 		{
-			retry--;
+			path = pickRandomCustomImage(true);
+			// Custom images are not tied to the game list
+			mCurrentGame = NULL;
+		}
+		else
+		{
+			// Load a random video
 			path = pickRandomVideo();
+
+			int retry = 10;
+			while (retry > 0 && !Utils::FileSystem::exists(path))
+			{
+				retry--;
+				path = pickRandomVideo();
+			}
 		}
 
 		if (!path.empty() && Utils::FileSystem::exists(path))
@@ -183,15 +193,18 @@ void SystemScreenSaver::stopScreenSaver()
 	mState = STATE_INACTIVE;
 	PowerSaver::runningScreenSaver(false);
 
-	// Exiting video screen saver -> Restore sound
-	if (isExitingScreenSaver && isVideoScreenSaver && Settings::getInstance()->getBool("VideoAudio") && !Settings::getInstance()->getBool("ScreenSaverVideoMute"))
+	// Exiting screen saver -> Restore sound
+	if (isExitingScreenSaver && Settings::getInstance()->getBool("StopMusicOnScreenSaver")) //isVideoScreenSaver && Settings::getInstance()->getBool("VideoAudio") && !Settings::getInstance()->getBool("ScreenSaverVideoMute"))
 	{
 		AudioManager::getInstance()->init();
 
-		if (ViewController::get()->getState().viewing == ViewController::GAME_LIST || ViewController::get()->getState().viewing == ViewController::SYSTEM_SELECT)
-			AudioManager::getInstance()->changePlaylist(ViewController::get()->getState().getSystem()->getTheme(), true);
-		else
-			AudioManager::getInstance()->playRandomMusic();
+		if (Settings::getInstance()->getBool("audio.bgmusic"))
+		{
+			if (ViewController::get()->getState().viewing == ViewController::GAME_LIST || ViewController::get()->getState().viewing == ViewController::SYSTEM_SELECT)
+				AudioManager::getInstance()->changePlaylist(ViewController::get()->getState().getSystem()->getTheme(), true);
+			else
+				AudioManager::getInstance()->playRandomMusic();
+		}
 	}
 }
 
@@ -368,16 +381,16 @@ std::string SystemScreenSaver::pickRandomGameListImage()
 	return pickGameListNode(image, "image");
 }
 
-std::string SystemScreenSaver::pickRandomCustomImage()
+std::string SystemScreenSaver::pickRandomCustomImage(bool video)
 {
 	std::string path;
 
-	std::string imageDir = Settings::getInstance()->getString("SlideshowScreenSaverImageDir");
+	std::string imageDir = Settings::getInstance()->getString(video ? "SlideshowScreenSaverVideoDir" : "SlideshowScreenSaverImageDir");
 	if ((imageDir != "") && (Utils::FileSystem::exists(imageDir)))
 	{
-		std::string                   imageFilter = Settings::getInstance()->getString("SlideshowScreenSaverImageFilter");
+		std::string                   imageFilter = Settings::getInstance()->getString(video ? "SlideshowScreenSaverVideoFilter" : "SlideshowScreenSaverImageFilter");
 		std::vector<std::string>      matchingFiles;
-		Utils::FileSystem::stringList dirContent  = Utils::FileSystem::getDirContent(imageDir, Settings::getInstance()->getBool("SlideshowScreenSaverRecurse"));
+		Utils::FileSystem::stringList dirContent  = Utils::FileSystem::getDirContent(imageDir, Settings::getInstance()->getBool(video ? "SlideshowScreenSaverVideoRecurse" : "SlideshowScreenSaverRecurse"));
 
 		for(Utils::FileSystem::stringList::const_iterator it = dirContent.cbegin(); it != dirContent.cend(); ++it)
 		{

@@ -28,6 +28,11 @@ set(CORE_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/src/animations/AnimationController.h
 	${CMAKE_CURRENT_SOURCE_DIR}/src/animations/LambdaAnimation.h
 
+	# Theme animations
+	${CMAKE_CURRENT_SOURCE_DIR}/src/anim/ThemeAnimation.h	
+	${CMAKE_CURRENT_SOURCE_DIR}/src/anim/ThemeStoryboard.h	
+	${CMAKE_CURRENT_SOURCE_DIR}/src/anim/StoryboardAnimator.h
+	
 	# GuiComponents
 	${CMAKE_CURRENT_SOURCE_DIR}/src/components/AnimatedImageComponent.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/AsyncNotificationComponent.h
@@ -57,6 +62,7 @@ set(CORE_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/src/components/VideoVlcComponent.h
 	${CMAKE_CURRENT_SOURCE_DIR}/src/components/VolumeInfoComponent.h
 	${CMAKE_CURRENT_SOURCE_DIR}/src/components/MultiLineMenuEntry.h
+	${CMAKE_CURRENT_SOURCE_DIR}/src/components/ScrollbarComponent.h	
 
 	# Guis
 	${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiDetectDevice.h
@@ -114,8 +120,12 @@ set(CORE_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/Window.cpp
 
 	# Animations
-	${CMAKE_CURRENT_SOURCE_DIR}/src/animations/AnimationController.cpp
-
+	${CMAKE_CURRENT_SOURCE_DIR}/src/animations/AnimationController.cpp	
+	
+	# Theme animations
+	${CMAKE_CURRENT_SOURCE_DIR}/src/anim/ThemeStoryboard.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/anim/StoryboardAnimator.cpp
+	
 	# GuiComponents
 	${CMAKE_CURRENT_SOURCE_DIR}/src/components/AnimatedImageComponent.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/components/AsyncNotificationComponent.cpp
@@ -141,6 +151,7 @@ set(CORE_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/components/VideoPlayerComponent.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/components/VideoVlcComponent.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/components/VolumeInfoComponent.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/components/ScrollbarComponent.cpp
 
 	# Guis
 	${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiDetectDevice.cpp

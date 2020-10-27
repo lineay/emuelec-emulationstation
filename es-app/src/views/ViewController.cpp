@@ -21,6 +21,12 @@
 #include "AudioManager.h"
 #include "FileSorts.h"
 #include "CollectionSystemManager.h"
+#include "guis/GuiImageViewer.h"
+#include "ApiSystem.h"
+
+#ifdef _ENABLEEMUELEC
+#include "ApiSystem.h"
+#endif
 
 ViewController* ViewController::sInstance = NULL;
 
@@ -40,7 +46,7 @@ ViewController::ViewController(Window* window)
 	: GuiComponent(window), mCurrentView(nullptr), mCamera(Transform4x4f::Identity()), mFadeOpacity(0), mLockInput(false)
 {
 	mSystemListView = nullptr;
-	mState.viewing = NOTHING;
+	mState.viewing = NOTHING;	
 }
 
 ViewController::~ViewController()
@@ -138,8 +144,8 @@ void ViewController::goToSystemView(SystemData* system, bool forceImmediate)
 	systemList->goToSystem(dest, false);
 
 	mCurrentView = systemList;
-	mCurrentView->onShow();
 
+	// mCurrentView->onShow();
 //	PowerSaver::pause();
 //	PowerSaver::resume();
 
@@ -213,29 +219,40 @@ void ViewController::goToGameList(SystemData* system, bool forceImmediate)
 	mState.viewing = GAME_LIST;
 	mState.system = moveToBundle == nullptr ? system : moveToBundle;
 
-	if (mCurrentView)
-		mCurrentView->onHide();
-
-	mCurrentView = getGameListView(moveToBundle == nullptr ? system : moveToBundle);
+	std::shared_ptr<IGameListView> view = getGameListView(moveToBundle == nullptr ? system : moveToBundle);
 	
 	if (collectionFolder != nullptr)
 	{
-		ISimpleGameListView* view = dynamic_cast<ISimpleGameListView*>(mCurrentView.get());
-		if (view != nullptr)
-			view->moveToFolder(collectionFolder);
-	}
-	
-	if (mCurrentView)
-		mCurrentView->onShow();	
+		ISimpleGameListView* simpleView = dynamic_cast<ISimpleGameListView*>(view.get());
+		if (simpleView != nullptr)
+			simpleView->moveToFolder(collectionFolder);
+	}	
 
 	if (AudioManager::isInitialized())
 		AudioManager::getInstance()->changePlaylist(system->getTheme());
 
-	playViewTransition(forceImmediate);
+	mDeferPlayViewTransitionTo = nullptr;
+
+	if (forceImmediate || Settings::getInstance()->getString("TransitionStyle") == "fade")
+	{
+		if (mCurrentView)
+			mCurrentView->onHide();
+
+		mCurrentView = view;
+		playViewTransition(forceImmediate);
+	}
+	else
+	{
+		cancelAnimation(0);
+		mDeferPlayViewTransitionTo = view;
+	}
 }
 
 void ViewController::playViewTransition(bool forceImmediate)
 {
+	if (mCurrentView)
+		mCurrentView->onShow();
+
 	Vector3f target(Vector3f::Zero());
 	if(mCurrentView)
 		target = mCurrentView->getPosition();
@@ -247,6 +264,9 @@ void ViewController::playViewTransition(bool forceImmediate)
 	std::string transition_style = Settings::getInstance()->getString("TransitionStyle");
 	if (Settings::getInstance()->getString("PowerSaverMode") == "instant")
 		transition_style = "instant";
+
+	if (transition_style == "fade & slide")
+		transition_style = "slide";
 
 	if(transition_style == "fade")
 	{
@@ -302,9 +322,6 @@ void ViewController::onFileChanged(FileData* file, FileChangeType change)
 		it->second->onFileChanged(file, change);
 }
 
-#include "guis/GuiImageViewer.h"
-#include "ApiSystem.h"
-
 void ViewController::launch(FileData* game, LaunchGameOptions options, Vector3f center)
 {
 	if(game->getType() != GAME)
@@ -329,17 +346,13 @@ void ViewController::launch(FileData* game, LaunchGameOptions options, Vector3f 
 		}
 		return;
 	}
-
-	// Hide the current view
-	if (mCurrentView)
-		mCurrentView->onHide();
-
+	
 	Transform4x4f origCamera = mCamera;
 	origCamera.translation() = -mCurrentView->getPosition();
 
 	center += mCurrentView->getPosition();
 	stopAnimation(1); // make sure the fade in isn't still playing
-	mWindow->stopInfoPopup(); // make sure we disable any existing info popup
+	mWindow->stopNotificationPopups(); // make sure we disable any existing info popup
 	mLockInput = true;
 		
 	if (!Settings::getInstance()->getBool("HideWindow"))
@@ -355,37 +368,49 @@ void ViewController::launch(FileData* game, LaunchGameOptions options, Vector3f 
 	if(transition_style == "auto")
 		transition_style = "slide";
 
-	// Workaround, the grid scale has problems when sliding giving bad effects
-	if(transition_style == "slide" && mCurrentView->isKindOf<GridGameListView>())
-		transition_style = "fade";
-
 	if (Settings::getInstance()->getString("PowerSaverMode") == "instant")
 		transition_style = "instant";
+
+	if (transition_style == "fade & slide")
+		transition_style = "slide";
+
+	// Workaround, the grid scale has problems when sliding giving bad effects
+	if (transition_style == "slide" && mCurrentView->isKindOf<GridGameListView>())
+		transition_style = "fade";
 
 	if(transition_style == "fade")
 	{
 		// fade out, launch game, fade back in
-		auto fadeFunc = [this](float t) {
-			mFadeOpacity = Math::lerp(0.0f, 1.0f, t);
-		};
+		auto fadeFunc = [this](float t) { mFadeOpacity = Math::lerp(0.0f, 1.0f, t); };
+
 		setAnimation(new LambdaAnimation(fadeFunc, 800), 0, [this, game, fadeFunc, options]
 		{
+			if (mCurrentView) mCurrentView->onHide();
+
 			game->launchGame(mWindow, options);
 			setAnimation(new LambdaAnimation(fadeFunc, 800), 0, [this] { mLockInput = false; mWindow->closeSplashScreen(); }, true);
 			this->onFileChanged(game, FILE_METADATA_CHANGED);
 		});
-	} else if (transition_style == "slide"){
+	} 
+	else if (transition_style == "slide")
+	{
 		// move camera to zoom in on center + fade out, launch game, come back in
 		setAnimation(new LaunchAnimation(mCamera, mFadeOpacity, center, 1500), 0, [this, origCamera, center, game, options]
 		{
+			if (mCurrentView) mCurrentView->onHide();
+
 			game->launchGame(mWindow, options);
 			mCamera = origCamera;
 			setAnimation(new LaunchAnimation(mCamera, mFadeOpacity, center, 600), 0, [this] { mLockInput = false; mWindow->closeSplashScreen(); }, true);
 			this->onFileChanged(game, FILE_METADATA_CHANGED);
 		});
-	} else { // instant
+	} 
+	else // instant
+	{ 		
 		setAnimation(new LaunchAnimation(mCamera, mFadeOpacity, center, 10), 0, [this, origCamera, center, game, options]
 		{
+			if (mCurrentView) mCurrentView->onHide();
+
 			game->launchGame(mWindow, options);
 			mCamera = origCamera;
 			setAnimation(new LaunchAnimation(mCamera, mFadeOpacity, center, 10), 0, [this] { mLockInput = false; mWindow->closeSplashScreen(); }, true);
@@ -560,6 +585,18 @@ bool ViewController::input(InputConfig* config, Input input)
 	if(mLockInput)
 		return true;
 
+
+#ifdef _ENABLEEMUELEC
+/* Detect unconfigured keyboad as well */
+        if(config->isConfigured() == false) {
+			if(input.type == TYPE_BUTTON || input.type == TYPE_KEY) {
+				if(input.id != SDLK_POWER) {
+	    mWindow->pushGui(new GuiDetectDevice(mWindow, false, NULL));
+	    return true;
+	}
+	  }
+        }
+#else
         // batocera
 	/* if we receive a button pressure for a non configured joystick, suggest the joystick configuration */
         if(config->isConfigured() == false) {
@@ -568,6 +605,7 @@ bool ViewController::input(InputConfig* config, Input input)
 	    return true;
 	  }
         }
+#endif
 
 		if (config->getDeviceId() == DEVICE_KEYBOARD && input.value && input.id == SDLK_F5)
 		{
@@ -593,6 +631,15 @@ bool ViewController::input(InputConfig* config, Input input)
 		return true;
 	}
 
+#ifdef _ENABLEEMUELEC
+	// Emuelec next song
+	if(config->isMappedTo("leftthumb", input) && input.value != 0) // emuelec
+	{
+		// next song
+		AudioManager::getInstance()->playRandomMusic(false);
+		return true;
+	}
+#else
 	// Batocera next song
 	if(config->isMappedTo("l3", input) && input.value != 0) // batocera
 	{
@@ -600,6 +647,7 @@ bool ViewController::input(InputConfig* config, Input input)
 		AudioManager::getInstance()->playRandomMusic(false);
 		return true;
 	}
+#endif
 
 	if(UIModeController::getInstance()->listen(config, input))  // check if UI mode has changed due to passphrase completion
 	{
@@ -614,12 +662,25 @@ bool ViewController::input(InputConfig* config, Input input)
 
 void ViewController::update(int deltaTime)
 {
-	if(mCurrentView)
-	{
+	if (mCurrentView)
 		mCurrentView->update(deltaTime);
-	}
 
 	updateSelf(deltaTime);
+
+	if (mDeferPlayViewTransitionTo != nullptr)
+	{
+		auto destView = mDeferPlayViewTransitionTo;
+		mDeferPlayViewTransitionTo.reset();
+		
+		mWindow->postToUiThread([this, destView](Window* w) 
+		{ 
+			if (mCurrentView)
+				mCurrentView->onHide();
+
+			mCurrentView = destView;
+			playViewTransition(false); 
+		});
+	}
 }
 
 void ViewController::render(const Transform4x4f& parentTrans)
@@ -664,14 +725,14 @@ void ViewController::render(const Transform4x4f& parentTrans)
 	// fade out
 	if (mFadeOpacity)
 	{
-		if (Settings::getInstance()->getBool("HideWindow"))
+		if (!Settings::getInstance()->getBool("HideWindow") && mLockInput) // We're launching a game
+			mWindow->renderSplashScreen(mFadeOpacity, false);
+		else
 		{
 			unsigned int fadeColor = 0x00000000 | (unsigned char)(mFadeOpacity * 255);
 			Renderer::setMatrix(parentTrans);
 			Renderer::drawRect(0.0f, 0.0f, Renderer::getScreenWidth(), Renderer::getScreenHeight(), fadeColor, fadeColor);
 		}
-		else
-			mWindow->renderSplashScreen(mFadeOpacity, false);
 	}
 }
 
@@ -701,10 +762,18 @@ void ViewController::preload()
 	}
 }
 
-void ViewController::reloadGameListView(IGameListView* view, bool reloadTheme)
+void ViewController::reloadSystemListViewTheme(SystemData* system)
 {
-	if (reloadTheme)
-		ThemeData::setDefaultTheme(nullptr);
+	if (mSystemListView == nullptr)
+		return;
+
+	mSystemListView->reloadTheme(system);
+}
+
+void ViewController::reloadGameListView(IGameListView* view)
+{
+	if (view == nullptr)
+		return;
 
 	for(auto it = mGameListViews.cbegin(); it != mGameListViews.cend(); it++)
 	{
@@ -720,9 +789,6 @@ void ViewController::reloadGameListView(IGameListView* view, bool reloadTheme)
 			cursorPath = cursor->getPath();
 
 		mGameListViews.erase(it);
-
-		if(reloadTheme)
-			system->loadTheme();
 
 		system->setUIModeFilters();
 		system->updateDisplayedGameCount();
@@ -752,9 +818,6 @@ void ViewController::reloadGameListView(IGameListView* view, bool reloadTheme)
 		break;		
 	}
 	
-	if (SystemData::sSystemVector.size() > 0 && reloadTheme)
-		ViewController::get()->onThemeChanged(SystemData::sSystemVector.at(0)->getTheme());
-
 	// Redisplay the current view
 	if (mCurrentView)
 		mCurrentView->onShow();

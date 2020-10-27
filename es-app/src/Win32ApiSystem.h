@@ -24,13 +24,14 @@ public:
 	bool isReadyFlagSet() override;
 
 	// Themes
-	std::vector<std::string> getBatoceraThemesList() override;
+	std::vector<BatoceraTheme> getBatoceraThemesList() override;
 	std::pair<std::string, int> installBatoceraTheme(std::string thname, const std::function<void(const std::string)>& func) override;
+	std::pair<std::string, int> uninstallBatoceraTheme(std::string bezelsystem, const std::function<void(const std::string)>& func = nullptr) override;
 
 	// Bezels
-	virtual std::vector<std::string> getBatoceraBezelsList();
+	virtual std::vector<BatoceraBezel> getBatoceraBezelsList();
 	virtual std::pair<std::string, int> installBatoceraBezel(std::string bezelsystem, const std::function<void(const std::string)>& func = nullptr);
-	virtual std::pair<std::string, int> uninstallBatoceraBezel(BusyComponent* ui, std::string bezelsystem);
+	virtual std::pair<std::string, int> uninstallBatoceraBezel(std::string bezelsystem, const std::function<void(const std::string)>& func = nullptr);
 
 	// Updates
 	std::pair<std::string, int> updateSystem(const std::function<void(const std::string)>& func) override;
@@ -42,8 +43,11 @@ public:
 
 	static std::string getEmulatorLauncherPath(const std::string variable);
 
+	std::vector<std::string> getShaderList() override;
+
 protected:
 	bool executeScript(const std::string command) override;
+	std::pair<std::string, int> executeScript(const std::string command, const std::function<void(const std::string)>& func) override;
 	std::vector<std::string> executeEnumerationScript(const std::string command) override;
 };
 

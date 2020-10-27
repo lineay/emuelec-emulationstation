@@ -46,6 +46,12 @@ public:
 	void setAnimateColor(unsigned int color) { mAnimateColor = color; };
 	void setAnimateTiming(float timing) { mAnimateTiming = timing; };
 
+	virtual void onShow() override;
+	virtual void onHide() override;
+
+	ThemeData::ThemeElement::Property getProperty(const std::string name) override;
+	void setProperty(const std::string name, const ThemeData::ThemeElement::Property& value) override;
+
 private:
 	void buildVertices();
 	void updateColors();
@@ -63,7 +69,7 @@ private:
 
 	float mTimer;
 	float mAnimateTiming;
-	unsigned int mAnimateColor;
+	unsigned int mAnimateColor;	
 };
 
 #endif // ES_CORE_COMPONENTS_NINE_PATCH_COMPONENT_H
